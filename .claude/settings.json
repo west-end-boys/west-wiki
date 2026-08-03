@@ -1,0 +1,50 @@
+{
+  "cleanupPeriodDays": 36500,
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Write",
+      "Bash(find *)",
+      "Bash(grep :*)",
+      "Bash(head :*)",
+      "Bash(tail :*)",
+      "Bash(ls *)",
+      "Bash(sort *)",
+      "Bash(tree :*)",
+      "Bash(wc *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$BROWSER 'vscode://private.bb-cc-notify/ping?message=Claude%20needs%20permission'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$BROWSER 'vscode://private.bb-cc-notify/ping?message=Claude%20is%20done'"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y @owloops/claude-powerline --style=powerline"
+  }
+}

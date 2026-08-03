@@ -1,0 +1,7 @@
+# Autocode local files
+HANDOFF.md
+PROGRESS.md
+.claude/settings.local.json
+.autocode/scripts/node_modules/
+.autocode/state/
+log/harness-*.log
