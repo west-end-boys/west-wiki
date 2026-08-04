@@ -83,7 +83,7 @@ A GM can publish:
 - Available date and time windows
 - Regions they are willing or authorized to run
 - Maximum session duration
-- Optional party-size limits
+- Optional party-size limits (minimum and maximum)
 
 **5. Create a call to adventure**
 
