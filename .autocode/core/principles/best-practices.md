@@ -74,9 +74,10 @@ if (!user) return null;  // Caller has no idea why
 
 | Change frequency | Belongs in |
 |---|---|
-| Every few hours / per task | `PROJECT-TODO.md`, TASKLOG |
+| Every few minutes / per task | Task record (`record.*`) |
+| Every few hours / per task | Task queue (`task.*`), `PROJECT-TODO.md` |
 | Every few tasks / phase | `USAGE.md` (how te use the project) |
-| Rarely / never | `README.md` (project goals), ADR |
+| Rarely / never | Phase plan, `README.md` (project goals), ADR |
 
 **Single Source of Truth** — Each fact lives in exactly one authoritative location. All other documents reference it with a link; they never copy it. Every duplicate is a future inconsistency.
 
@@ -91,8 +92,15 @@ if (!user) return null;  // Caller has no idea why
 | `ARCHITECTURE.md` | Component map, source layout, data flow, security model |
 | `DEVELOPMENT.md` | Code conventions, access patterns, rationale |
 | `SPECS.md` | Normative schemas, contracts, env vars |
-| `BUILD-TODO.md` | Phase plan, task progress, acceptance criteria |
+| Phase plan | Ordered task breakdown, acceptance criteria — human-approved, frozen, **no status** |
+| Task queue | Task status, assignment, dependency state — the single home for status |
+| Task record | Mini-plan, TDD progress, review results, outcome — append-only |
 | `LESSONS.md` | Deferred learnings, project-specific patterns |
+
+The last three are managed through the operations in `core/workflow/task-tracking.md`; which files
+(if any) back them is the bound adapter's business. Splitting the plan from the queue is a direct
+application of volatility separation: a frozen plan and a per-minute status field have no business
+sharing a document.
 
 **Minimum surface area** — Every line added to `CLAUDE.md` is a maintenance commitment. The correct default when information already exists in another document is a link, not a copy. A smaller `CLAUDE.md` is easier to keep accurate and easier to read cold.
 

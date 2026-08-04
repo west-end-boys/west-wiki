@@ -1,13 +1,17 @@
 # /project:log-task - Log Task Execution
 
-Append or update task entry in active TASKLOG.
+Drive the task record through its lifecycle using the `record.*` operations.
+
+This command is adapter-agnostic. It calls the operations defined in
+`core/workflow/task-tracking.md`; the bound adapter decides where the record lives and what it
+looks like.
 
 ## Purpose
 
-Automate TASKLOG updates during the task execution cycle:
-- Add mini-plan entry when starting task
-- Update with TDD cycle progress
-- Finalize with review results and outcome
+Automate task record updates during the task execution cycle:
+- Open the record with a mini-plan when starting a task
+- Append TDD cycle progress
+- Close with review results and outcome, then mark the task complete
 
 ## Usage
 
@@ -16,18 +20,19 @@ Automate TASKLOG updates during the task execution cycle:
 /project:log-task start [taskId]
 ```
 
-Creates new task entry in TASKLOG-*-CURRENT.md with:
-- Task ID and description (from BUILD-TODO.md)
-- Status: In Progress
+Runs `task.claim(taskId)` and `record.open(taskId, ...)` with:
+- Task ID and description (from `task.get(taskId)`)
 - Timestamp
-- Empty template sections for mini-plan
+- Empty template sections for the mini-plan
+
+`task.claim` sets status. The record carries none — see contract invariant 1.
 
 ### Update with Mini-Plan
 ```
 /project:log-task plan [taskId]
 ```
 
-Agent fills in:
+Agent fills in, via `record.append(taskId, ...)`:
 - Goal (one sentence)
 - Approach (steps)
 - Test strategy
@@ -42,9 +47,9 @@ Commits: `docs(tasklog): add plan for task [taskId]`
 
 Where phase is: red | green | refactor
 
-Updates TDD Cycle section:
-- ✅ Marks phase complete
-- ⚠️ Notes issues if any
+`record.append(taskId, ...)` updates the TDD Cycle section:
+- Marks phase complete
+- Notes issues if any
 
 No commit (TDD commits are separate: test, feat, refactor)
 
@@ -53,50 +58,50 @@ No commit (TDD commits are separate: test, feat, refactor)
 /project:log-task complete [taskId]
 ```
 
-Agent fills in:
+Agent fills in via `record.close(taskId, outcome)`:
 - Review results (runs quick review)
 - Completion timestamp
 - Duration calculation
 - Commit hashes (from git log)
 - Prompts for learnings (optional)
 
-Updates BUILD-TODO.md: marks task done `[x]`
+Then runs `task.complete(taskId, commits)`.
 
 Commits: `docs: complete task [taskId] - [description]`
 
 ## Process
 
-### 1. Find Active TASKLOG
+### 1. Confirm a Record Surface Exists
 
-```bash
-# Should be exactly one file matching pattern
-ls doc/TASKLOG-*-CURRENT.md
-```
-
-If not found, error: "No active TASKLOG. Create doc/TASKLOG-[firstId]-CURRENT.md from template."
+The bound adapter needs somewhere to write. If `record.open` reports no active record surface,
+error: "No active task record surface. Run `plan.digest(phasePlan)` first — see
+`core/workflow/planning.md`."
 
 ### 2. Extract Task Info
 
-From BUILD-TODO.md, find task matching ID:
-```markdown
-- [ ] Task 1.2: Add email validation
-  - Test: Validate email format with regex
-  - Files: src/validators/email.ts, tests/validators/email.test.ts
+`task.get(taskId)` returns the description, acceptance criteria, and file list:
+
+```
+Task 1.2: Add email validation
+  Test:  Validate email format with regex
+  Files: src/validators/email.ts, tests/validators/email.test.ts
 ```
 
-### 3. Populate Template
+### 3. Populate the Record
 
-Use template from `templates/TASKLOG.md.template`
+Use the entry format documented in the bound adapter's `operations.md` (`record.open`).
 
 Fill in:
 - Task ID and description
 - Timestamp (current)
 - Sections based on command (start/plan/tdd/complete)
 
-### 4. Update or Append
+### 4. Open or Append
 
-- If task entry exists → Update in place
-- If new task → Append to end of file
+- If a record for this task exists → `record.append(taskId, ...)`
+- If new → `record.open(taskId, plan)`
+
+Records are append-only (contract invariant 4). Never rewrite an earlier note.
 
 ### 5. Auto-Capture Data
 
@@ -110,7 +115,7 @@ Fill in:
 
 ### After Start
 ```
-Task 1.2 started in doc/TASKLOG-1.1-CURRENT.md
+Task 1.2 record opened.
 Ready for mini-planning.
 ```
 
@@ -124,7 +129,7 @@ Ready to begin TDD cycle.
 
 ### After TDD Update
 ```
-TDD Cycle updated: RED ✅
+TDD Cycle updated: RED complete
 Continue to GREEN phase.
 ```
 
@@ -139,8 +144,8 @@ Results:
 - Issues: None
 
 Updated:
-- doc/TASKLOG-1.1-CURRENT.md
-- doc/BUILD-TODO.md (task marked done)
+- Task record closed (record.close)
+- Task marked complete (task.complete)
 
 Committed: docs: complete task 1.2 - email validation
 ```
@@ -177,22 +182,22 @@ Agent runs review
 
 ## Error Handling
 
-### No Active TASKLOG
+### No Record Surface
 ```
-Error: No active TASKLOG found.
-Create doc/TASKLOG-[firstId]-CURRENT.md from template before logging tasks.
+Error: No active task record surface.
+Run plan.digest(phasePlan) before logging tasks — see core/workflow/planning.md.
 ```
 
-### Task Not in BUILD-TODO.md
+### Task Not in the Queue
 ```
-Error: Task 1.2 not found in BUILD-TODO.md
-Verify task ID or add task to BUILD-TODO.md first.
+Error: task.get(1.2) returned nothing.
+Verify the task ID, or task.add(...) it first.
 ```
 
 ### Task Already Complete
 ```
-Warning: Task 1.2 already marked complete in BUILD-TODO.md
-Use 'update' instead of 'start' to modify entry.
+Warning: Task 1.2 is already complete.
+Use 'tdd' or 'plan' to append to its record instead of 'start'.
 ```
 
 ## Manual Usage
@@ -216,3 +221,8 @@ Can also be called manually for fine-grained control:
 - Duration calculated from start to complete timestamps
 - Git log filtered to commits since task start
 - Test counts auto-detected from test runner output
+
+## Related Files
+
+- `core/workflow/task-tracking.md` - the `record.*` and `task.*` operations
+- `task-tracking/<adapter>/operations.md` - concrete mechanics for the bound adapter

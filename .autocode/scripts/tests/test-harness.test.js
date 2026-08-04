@@ -29,33 +29,6 @@ const { RateLimitError } = harness;
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PHASE4_AUTONOMOUS = `\
-## Phase 4 — Review, Feedback, and Stats
-
-### 4.1 — Pagination utility
-- [ ] Create pagination.py **Verify:** Unit test — paginator correctly slices a list
-- [ ] **Verify:** Unit test — paginator correctly slices a list
-
-### 4.2 — Interactive review session
-- [o] Create review.py
-`;
-
-const PHASE4_BLOCKED = `\
-## Phase 4 — Review, Feedback, and Stats
-
-### 4.1 — Pagination utility
-- [o] Create pagination.py
-- [ ] **Verify:** Manual test — make review in interactive mode
-`;
-
-const PHASE4_ALL_DONE = `\
-## Phase 4 — Review, Feedback, and Stats
-
-- [o] Create pagination.py
-- [x] Verified
-- [-] Skipped for reason
-`;
-
 const MULTI_PHASE = `\
 ## Phase 3 — Scoring Pipeline
 
@@ -74,12 +47,57 @@ const MULTI_PHASE = `\
 
 function makeTask(status, description, isManual = false) {
   return {
-    raw: `- ${status} ${description}`,
+    id: null,
     status,
     description,
-    verify_text: isManual ? 'Manual test' : '',
+    verify: isManual ? 'Manual test' : '',
     is_manual: isManual,
   };
+}
+
+// Locate a shipped adapter in either the canonical repo layout (<root>/task-tracking/<name>)
+// or an installed project (.autocode/task-tracking/<name>).
+function findAdapterDir(name, entrypoint) {
+  return [`../../../../task-tracking/${name}`, `../../task-tracking/${name}`]
+    .map(rel => path.resolve(__dirname, rel))
+    .find(dir => fs.existsSync(path.join(dir, entrypoint)));
+}
+
+const MARKDOWN_ADAPTER_DIR = findAdapterDir('markdown', 'phase-status.js');
+const GITHUB_ADAPTER_DIR = findAdapterDir('github-issues', 'phase-status.sh');
+const HAS_JQ = (() => {
+  try {
+    require('child_process').execFileSync('jq', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+})();
+
+/**
+ * Write a throwaway adapter that prints a fixed phase model, and return its ACTIVE path.
+ * Exercises the harness's machine interface without depending on any real adapter.
+ */
+function makeFakeAdapter(model, { name = 'fake', omitCommand = false } = {}) {
+  const tmpDir = makeTmpDir();
+  const trackingDir = path.join(tmpDir, 'task-tracking');
+  const adapterDir = path.join(trackingDir, name);
+  fs.mkdirSync(adapterDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(adapterDir, 'harness.json'),
+    JSON.stringify({
+      adapter: name,
+      phaseStatusCommand: omitCommand ? null : ['node', 'phase-status.js'],
+      concurrency: 'single-writer',
+    }),
+  );
+  fs.writeFileSync(
+    path.join(adapterDir, 'phase-status.js'),
+    `process.stdout.write(${JSON.stringify(JSON.stringify(model))});\n`,
+  );
+  const activePath = path.join(trackingDir, 'ACTIVE');
+  fs.writeFileSync(activePath, name + '\n');
+  return { tmpDir, activePath, adapterDir };
 }
 
 function makePhase(number, tasks) {
@@ -140,28 +158,129 @@ function makeFactory(events, sessionId = 'sess-abc') {
 }
 
 // ---------------------------------------------------------------------------
-// _parsePhases
+// Task-tracking adapter resolution + machine interface
 // ---------------------------------------------------------------------------
 
-describe('_parsePhases', () => {
+describe('resolveAdapter', () => {
+  test('reads the adapter name from ACTIVE and loads its harness.json', () => {
+    const { tmpDir, activePath, adapterDir } = makeFakeAdapter({ phases: [] });
+    const adapter = harness.resolveAdapter(activePath);
+    expect(adapter.name).toBe('fake');
+    expect(adapter.dir).toBe(adapterDir);
+    expect(adapter.config.phaseStatusCommand).toEqual(['node', 'phase-status.js']);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  test('throws an actionable error when no adapter is bound', () => {
+    const tmpDir = makeTmpDir();
+    const missing = path.join(tmpDir, 'task-tracking', 'ACTIVE');
+    expect(() => harness.resolveAdapter(missing)).toThrow(/setup\.sh --tracker/);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  test('throws when the adapter declares no phaseStatusCommand', () => {
+    const { tmpDir, activePath } = makeFakeAdapter({ phases: [] }, { omitCommand: true });
+    expect(() => harness.resolveAdapter(activePath)).toThrow(/cannot drive the autonomous harness/);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+});
+
+describe('readPhases', () => {
+  test('executes the adapter command and returns the phase model', () => {
+    const model = {
+      phases: [
+        { number: '4', header: 'Phase 4 - Test', tasks: [
+          { id: '4.1', status: 'open', description: 'Create paginator', verify: 'Unit test' },
+        ] },
+      ],
+    };
+    const { tmpDir, activePath } = makeFakeAdapter(model);
+    const phases = harness.readPhases(harness.resolveAdapter(activePath));
+    expect(phases).toHaveLength(1);
+    expect(phases[0].number).toBe('4');
+    expect(phases[0].tasks[0].id).toBe('4.1');
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  test('classifies manual tasks from adapter-supplied verify text', () => {
+    const model = {
+      phases: [
+        { number: '5', header: 'Phase 5 - Test', tasks: [
+          { id: '5.1', status: 'open', description: 'Send notification', verify: 'real discord webhook test' },
+          { id: '5.2', status: 'open', description: 'Create paginator', verify: 'Unit test - slices correctly' },
+        ] },
+      ],
+    };
+    const { tmpDir, activePath } = makeFakeAdapter(model);
+    const phases = harness.readPhases(harness.resolveAdapter(activePath));
+    expect(phases[0].tasks[0].is_manual).toBe(true);
+    expect(phases[0].tasks[1].is_manual).toBe(false);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+});
+
+describe('isManualTask', () => {
+  test('no verify text is not manual', () => {
+    expect(harness.isManualTask({ verify: '' })).toBe(false);
+  });
+
+  test('manual markers are matched case-insensitively', () => {
+    expect(harness.isManualTask({ verify: 'real discord webhook test' })).toBe(true);
+    expect(harness.isManualTask({ verify: 'Manual test - interactive mode' })).toBe(true);
+  });
+
+  test('non-manual verify text is not flagged', () => {
+    expect(harness.isManualTask({ verify: 'Unit test - paginator slices correctly' })).toBe(false);
+  });
+
+  test('an explicit manual flag from the adapter wins', () => {
+    expect(harness.isManualTask({ manual: true, verify: 'Unit test' })).toBe(true);
+    expect(harness.isManualTask({ manual: false, verify: 'Manual test' })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// markdown adapter: phase-status.js
+//
+// Behavior-preservation coverage for the parser extracted out of this harness.
+// Skipped when the markdown adapter is not present (another adapter may be bound).
+// ---------------------------------------------------------------------------
+
+// Skipping here is legitimate only when a non-markdown adapter is bound. If the suite is being
+// run from a partial checkout, the skip hides the behavior-preservation coverage for the parser
+// extracted out of the harness — so say so loudly. `make test` guards against this case.
+if (!MARKDOWN_ADAPTER_DIR) {
+  console.warn(
+    '\n[test-harness] markdown adapter not found — skipping its phase-status tests.\n' +
+    '               Expected task-tracking/markdown/phase-status.js relative to this suite.\n' +
+    '               If you meant to test the markdown adapter, run `make test` from the\n' +
+    '               autocode repository root with the whole repo present.\n',
+  );
+}
+
+const describeMarkdown = MARKDOWN_ADAPTER_DIR ? describe : describe.skip;
+
+describeMarkdown('markdown adapter phase-status', () => {
+  const phaseStatus = MARKDOWN_ADAPTER_DIR
+    ? require(path.join(MARKDOWN_ADAPTER_DIR, 'phase-status.js'))
+    : null;
+
   test('empty content returns empty list', () => {
-    expect(harness._parsePhases('')).toEqual([]);
+    expect(phaseStatus.parsePhases('')).toEqual([]);
   });
 
   test('content with no phase headers returns empty', () => {
-    const content = '# Title\nSome text\n- [ ] a task';
-    expect(harness._parsePhases(content)).toEqual([]);
+    expect(phaseStatus.parsePhases('# Title\nSome text\n- [ ] a task')).toEqual([]);
   });
 
   test('single phase header captured', () => {
-    const content = '## Phase 4 — Review\n';
-    const phases = harness._parsePhases(content);
+    const phases = phaseStatus.parsePhases('## Phase 4 — Review\n');
     expect(phases).toHaveLength(1);
     expect(phases[0].number).toBe('4');
     expect(phases[0].header).toContain('Review');
   });
 
-  test('task statuses all captured', () => {
+  test('glyphs map onto the contract status values', () => {
     const content = [
       '## Phase 4 — Test',
       '',
@@ -171,57 +290,44 @@ describe('_parsePhases', () => {
       '- [-] skipped',
       '- [~] in progress',
     ].join('\n');
-    const phases = harness._parsePhases(content);
-    const statuses = phases[0].tasks.map(t => t.status);
-    expect(statuses).toEqual(['[ ]', '[o]', '[x]', '[-]', '[~]']);
+    const statuses = phaseStatus.parsePhases(content)[0].tasks.map(t => t.status);
+    expect(statuses).toEqual(['open', 'done', 'done', 'deferred', 'in_progress']);
   });
 
-  test('task without verify not marked manual', () => {
-    const content = '## Phase 4 — Test\n- [ ] Create pagination.py\n';
-    const phases = harness._parsePhases(content);
-    expect(phases[0].tasks[0].is_manual).toBe(false);
-    expect(phases[0].tasks[0].verify_text).toBe('');
+  test('task without verify emits empty verify text', () => {
+    const phases = phaseStatus.parsePhases('## Phase 4 — Test\n- [ ] Create pagination.py\n');
+    expect(phases[0].tasks[0].verify).toBe('');
   });
 
-  test('verify line with manual marker flagged', () => {
+  test('verify text is extracted for harness classification', () => {
     const content = (
       '## Phase 4 — Test\n' +
       '- [ ] Launch review **Verify:** Manual test — make review in interactive mode\n'
     );
-    const phases = harness._parsePhases(content);
-    const task = phases[0].tasks[0];
-    expect(task.is_manual).toBe(true);
-    expect(task.verify_text).toContain('Manual test');
+    expect(phaseStatus.parsePhases(content)[0].tasks[0].verify).toContain('Manual test');
   });
 
-  test('verify line without manual marker not flagged', () => {
-    const content = (
-      '## Phase 4 — Test\n' +
-      '- [ ] Create paginator **Verify:** Unit test — paginator slices correctly\n'
-    );
-    const phases = harness._parsePhases(content);
-    expect(phases[0].tasks[0].is_manual).toBe(false);
+  test('task IDs are extracted when present', () => {
+    const content = '## Phase 1 — Test\n- [ ] **Task 1.2**: Add email validation\n';
+    expect(phaseStatus.parsePhases(content)[0].tasks[0].id).toBe('1.2');
   });
 
   test('multiple phases parsed in order', () => {
-    const phases = harness._parsePhases(MULTI_PHASE);
-    const numbers = phases.map(p => p.number);
-    expect(numbers).toEqual(['3', '4', '5']);
+    expect(phaseStatus.parsePhases(MULTI_PHASE).map(p => p.number)).toEqual(['3', '4', '5']);
   });
 
   test('tasks assigned to correct phase', () => {
-    const phases = harness._parsePhases(MULTI_PHASE);
-    const phase4 = phases.find(p => p.number === '4');
+    const phase4 = phaseStatus.parsePhases(MULTI_PHASE).find(p => p.number === '4');
     expect(phase4.tasks).toHaveLength(2);
   });
 
-  test('manual markers case insensitive', () => {
+  test('parsed output feeds harness classification end to end', () => {
     const content = (
       '## Phase 5 — Test\n' +
       '- [ ] Send notification **Verify:** real discord webhook test\n'
     );
-    const phases = harness._parsePhases(content);
-    expect(phases[0].tasks[0].is_manual).toBe(true);
+    const task = phaseStatus.parsePhases(content)[0].tasks[0];
+    expect(harness.isManualTask(task)).toBe(true);
   });
 });
 
@@ -229,42 +335,49 @@ describe('_parsePhases', () => {
 // getNextPhase
 // ---------------------------------------------------------------------------
 
+const MODEL_ALL_DONE = [
+  makePhase('4', [makeTask('done', 'Create pagination.py'), makeTask('deferred', 'Skipped')]),
+];
+
+const MODEL_BLOCKED = [
+  makePhase('4', [makeTask('done', 'Create pagination.py'), makeTask('open', 'Review', true)]),
+];
+
+const MODEL_AUTONOMOUS = [
+  makePhase('4', [makeTask('open', 'Create pagination.py'), makeTask('done', 'Create review.py')]),
+];
+
+const MODEL_MULTI = [
+  makePhase('3', [makeTask('done', 'Implement scorer')]),
+  makePhase('4', [makeTask('open', 'Create pagination.py')]),
+  makePhase('5', [makeTask('open', 'Wire notify', true)]),
+];
+
 describe('getNextPhase', () => {
   test('returns null when all tasks done', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_ALL_DONE);
-    expect(harness.getNextPhase(todo)).toBeNull();
-    fs.rmSync(tmpDir, { recursive: true });
+    expect(harness.getNextPhase(MODEL_ALL_DONE)).toBeNull();
   });
 
   test('returns null when only manual tasks remain', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_BLOCKED);
-    expect(harness.getNextPhase(todo)).toBeNull();
-    fs.rmSync(tmpDir, { recursive: true });
+    expect(harness.getNextPhase(MODEL_BLOCKED)).toBeNull();
   });
 
   test('returns phase with autonomous tasks', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_AUTONOMOUS);
-    const phase = harness.getNextPhase(todo);
+    const phase = harness.getNextPhase(MODEL_AUTONOMOUS);
     expect(phase).not.toBeNull();
     expect(phase.number).toBe('4');
-    fs.rmSync(tmpDir, { recursive: true });
   });
 
   test('skips completed phases, returns first with autonomous work', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, MULTI_PHASE);
     // Phase 3 is complete, Phase 4 has autonomous tasks, Phase 5 is manual-only
-    const phase = harness.getNextPhase(todo);
+    const phase = harness.getNextPhase(MODEL_MULTI);
     expect(phase).not.toBeNull();
     expect(phase.number).toBe('4');
-    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  test('in_progress tasks do not count as remaining work', () => {
+    const model = [makePhase('4', [makeTask('in_progress', 'Half done')])];
+    expect(harness.getNextPhase(model)).toBeNull();
   });
 });
 
@@ -274,28 +387,28 @@ describe('getNextPhase', () => {
 
 describe('phaseIsBlocked', () => {
   test('no remaining tasks returns false', () => {
-    const phase = makePhase('4', [makeTask('[o]', 'done')]);
+    const phase = makePhase('4', [makeTask('done', 'done')]);
     expect(harness.phaseIsBlocked(phase)).toBe(false);
   });
 
   test('all remaining manual returns true', () => {
     const phase = makePhase('4', [
-      makeTask('[o]', 'done'),
-      makeTask('[ ]', 'verify', true),
+      makeTask('done', 'done'),
+      makeTask('open', 'verify', true),
     ]);
     expect(harness.phaseIsBlocked(phase)).toBe(true);
   });
 
   test('mix of manual and autonomous returns false', () => {
     const phase = makePhase('4', [
-      makeTask('[ ]', 'autonomous'),
-      makeTask('[ ]', 'verify', true),
+      makeTask('open', 'autonomous'),
+      makeTask('open', 'verify', true),
     ]);
     expect(harness.phaseIsBlocked(phase)).toBe(false);
   });
 
   test('all remaining autonomous returns false', () => {
-    const phase = makePhase('4', [makeTask('[ ]', 'autonomous')]);
+    const phase = makePhase('4', [makeTask('open', 'autonomous')]);
     expect(harness.phaseIsBlocked(phase)).toBe(false);
   });
 });
@@ -305,40 +418,21 @@ describe('phaseIsBlocked', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectStateAfterSession', () => {
-  test('phase not in TODO returns phase_complete', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, '## Phase 5 — Notifications\n- [o] done\n');
-    const phase = makePhase('4', []);
-    expect(harness.detectStateAfterSession(phase, todo)).toBe('phase_complete');
-    fs.rmSync(tmpDir, { recursive: true });
+  test('phase no longer reported returns phase_complete', () => {
+    const phases = [makePhase('5', [makeTask('done', 'done')])];
+    expect(harness.detectStateAfterSession(makePhase('4', []), phases)).toBe('phase_complete');
   });
 
   test('no remaining tasks returns phase_complete', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_ALL_DONE);
-    const phase = makePhase('4', []);
-    expect(harness.detectStateAfterSession(phase, todo)).toBe('phase_complete');
-    fs.rmSync(tmpDir, { recursive: true });
+    expect(harness.detectStateAfterSession(makePhase('4', []), MODEL_ALL_DONE)).toBe('phase_complete');
   });
 
   test('only manual remaining returns blocked', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_BLOCKED);
-    const phase = makePhase('4', []);
-    expect(harness.detectStateAfterSession(phase, todo)).toBe('blocked');
-    fs.rmSync(tmpDir, { recursive: true });
+    expect(harness.detectStateAfterSession(makePhase('4', []), MODEL_BLOCKED)).toBe('blocked');
   });
 
   test('autonomous tasks remaining returns interrupted', () => {
-    const tmpDir = makeTmpDir();
-    const todo = path.join(tmpDir, 'BUILD-TODO.md');
-    fs.writeFileSync(todo, PHASE4_AUTONOMOUS);
-    const phase = makePhase('4', []);
-    expect(harness.detectStateAfterSession(phase, todo)).toBe('interrupted');
-    fs.rmSync(tmpDir, { recursive: true });
+    expect(harness.detectStateAfterSession(makePhase('4', []), MODEL_AUTONOMOUS)).toBe('interrupted');
   });
 });
 
@@ -608,5 +702,142 @@ describe('runSession', () => {
     const factory = makeFactory([makeEvent('assistant', 'PHASE_COMPLETE', 'sess-ret')], 'sess-ret');
     const [, returnedSid] = await harness.runSession('prompt', null, state, factory);
     expect(returnedSid).toBe('sess-ret');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// github-issues adapter: phase-status.sh
+//
+// Exercises the adapter's machine interface end to end against a fixture, with no
+// GitHub access and no credentials, by injecting a fake `gh` via the GH env var.
+// Skipped when the adapter is absent (another adapter may be bound) or jq is missing.
+// ---------------------------------------------------------------------------
+
+const canTestGithub = Boolean(GITHUB_ADAPTER_DIR) && HAS_JQ;
+
+if (!canTestGithub) {
+  console.warn(
+    `\n[test-harness] skipping github-issues adapter tests` +
+    ` (adapter ${GITHUB_ADAPTER_DIR ? 'found' : 'NOT found'}, jq ${HAS_JQ ? 'found' : 'NOT found'}).\n` +
+    `               jq is required by phase-status.sh — see that adapter's conventions.md.\n`,
+  );
+}
+
+const describeGithub = canTestGithub ? describe : describe.skip;
+
+describeGithub('github-issues adapter phase-status', () => {
+  const GH_FIXTURE = [
+    { number: 41, title: 'Task 1.1: Scaffold', body: '**Test:** builds',
+      labels: [{ name: 'autocode:task' }], state: 'CLOSED',
+      milestone: { title: 'Phase 1: Foundation' } },
+    { number: 42, title: 'Task 1.10: Late task', body: '**Test:** t',
+      labels: [{ name: 'autocode:task' }], state: 'OPEN',
+      milestone: { title: 'Phase 1: Foundation' } },
+    { number: 43, title: 'Task 1.9: Earlier task', body: '**Test:** t',
+      labels: [{ name: 'autocode:task' }], state: 'OPEN',
+      milestone: { title: 'Phase 1: Foundation' } },
+    { number: 44, title: 'Task 2.1: Implemented only', body: '**Test:** t',
+      labels: [{ name: 'autocode:task' }, { name: 'status:implemented' }], state: 'OPEN',
+      milestone: { title: 'Phase 2: Core' } },
+    { number: 45, title: 'Task 2.2: In flight', body: '**Test:** t',
+      labels: [{ name: 'autocode:task' }, { name: 'status:in-progress' }], state: 'OPEN',
+      milestone: { title: 'Phase 2: Core' } },
+    { number: 46, title: 'Task 3.1: Needs a human',
+      body: '**Test:** t\n**Verify:** real Discord webhook test',
+      labels: [{ name: 'autocode:task' }, { name: 'status:deferred' }], state: 'OPEN',
+      milestone: { title: 'Phase 3: Notify' } },
+    { number: 47, title: 'Task 3.2: Manual verify, still open',
+      body: '**Verify:** Manual test - interactive mode',
+      labels: [{ name: 'autocode:task' }], state: 'OPEN',
+      milestone: { title: 'Phase 3: Notify' } },
+    { number: 48, title: 'Unrelated issue', body: 'not autocode',
+      labels: [], state: 'OPEN', milestone: { title: 'Roadmap' } },
+    { number: 49, title: 'Task 9.9: No milestone', body: 'x',
+      labels: [{ name: 'autocode:task' }], state: 'OPEN', milestone: null },
+  ];
+
+  let tmpDir;
+  let phases;
+
+  beforeAll(() => {
+    tmpDir = makeTmpDir();
+
+    // Fake gh: ignores its arguments and prints the fixture.
+    const fakeGh = path.join(tmpDir, 'fake-gh');
+    fs.writeFileSync(fakeGh, '#!/bin/sh\ncat "$FAKE_GH_FIXTURE"\n');
+    fs.chmodSync(fakeGh, 0o755);
+    fs.writeFileSync(path.join(tmpDir, 'fixture.json'), JSON.stringify(GH_FIXTURE));
+
+    // Minimal installed-project layout so resolveAdapter() finds the adapter.
+    const trackingDir = path.join(tmpDir, 'task-tracking');
+    fs.mkdirSync(trackingDir, { recursive: true });
+    fs.cpSync(GITHUB_ADAPTER_DIR, path.join(trackingDir, 'github-issues'), { recursive: true });
+    fs.writeFileSync(path.join(trackingDir, 'ACTIVE'), 'github-issues\n');
+
+    const adapter = harness.resolveAdapter(path.join(trackingDir, 'ACTIVE'));
+    const prevGh = process.env.GH;
+    const prevFixture = process.env.FAKE_GH_FIXTURE;
+    process.env.GH = fakeGh;
+    process.env.FAKE_GH_FIXTURE = path.join(tmpDir, 'fixture.json');
+    try {
+      phases = harness.readPhases(adapter);
+    } finally {
+      if (prevGh === undefined) delete process.env.GH; else process.env.GH = prevGh;
+      if (prevFixture === undefined) delete process.env.FAKE_GH_FIXTURE;
+      else process.env.FAKE_GH_FIXTURE = prevFixture;
+    }
+  });
+
+  afterAll(() => {
+    if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('declares itself multi-writer', () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(GITHUB_ADAPTER_DIR, 'harness.json'), 'utf-8'));
+    expect(cfg.concurrency).toBe('multi-writer');
+    expect(cfg.phaseStatusCommand).toEqual(['sh', 'phase-status.sh']);
+  });
+
+  test('groups issues into numbered phases by milestone', () => {
+    expect(phases.map(p => p.number)).toEqual(['1', '2', '3']);
+    expect(phases[0].header).toBe('Phase 1: Foundation');
+  });
+
+  test('drops issues with no milestone or a non-phase milestone', () => {
+    const allIds = phases.flatMap(p => p.tasks.map(t => t.id));
+    expect(allIds).not.toContain('9.9');
+    expect(phases.map(p => p.header)).not.toContain('Roadmap');
+  });
+
+  test('maps issue state and labels onto contract status values', () => {
+    const byId = Object.fromEntries(phases.flatMap(p => p.tasks).map(t => [t.id, t.status]));
+    expect(byId['1.1']).toBe('done');          // closed
+    expect(byId['1.9']).toBe('open');          // open, no status label
+    expect(byId['2.1']).toBe('done');          // status:implemented
+    expect(byId['2.2']).toBe('in_progress');   // status:in-progress
+    expect(byId['3.1']).toBe('deferred');      // status:deferred
+  });
+
+  test('sorts task IDs segment-wise so 1.10 follows 1.9', () => {
+    expect(phases[0].tasks.map(t => t.id)).toEqual(['1.1', '1.9', '1.10']);
+  });
+
+  test('exposes the issue number for traceability', () => {
+    expect(phases[0].tasks.find(t => t.id === '1.1').issue).toBe(41);
+  });
+
+  test('emits verify text for harness manual-task classification', () => {
+    const p3 = phases.find(p => p.number === '3');
+    expect(p3.tasks.find(t => t.id === '3.2').is_manual).toBe(true);
+    expect(phases[0].tasks.find(t => t.id === '1.9').is_manual).toBe(false);
+  });
+
+  test('harness scheduling decisions work unchanged against this adapter', () => {
+    expect(harness.getNextPhase(phases).number).toBe('1');
+    expect(harness.phaseIsBlocked(phases.find(p => p.number === '3'))).toBe(true);
+    expect(harness.phaseIsBlocked(phases.find(p => p.number === '1'))).toBe(false);
+    expect(harness.detectStateAfterSession({ number: '1' }, phases)).toBe('interrupted');
+    expect(harness.detectStateAfterSession({ number: '2' }, phases)).toBe('phase_complete');
+    expect(harness.detectStateAfterSession({ number: '3' }, phases)).toBe('blocked');
   });
 });

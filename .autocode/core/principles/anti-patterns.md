@@ -126,7 +126,7 @@ git commit -m "refactor(users): extract validation logic"
 
 ### ❌ Fixing Multiple Things at Once
 One PR = One concern. If you find another bug while working:
-1. Note it in BUILD-TODO.md
+1. `task.add(...)` it
 2. Finish current task
 3. Create separate PR for the other fix
 

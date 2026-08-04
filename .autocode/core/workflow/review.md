@@ -5,7 +5,7 @@
 ### Quick Review
 **When:** Before every task commit (every cycle)
 **Purpose:** Catch obvious issues before commit
-**Output:** Logged in TASKLOG
+**Output:** Logged to the task record via `record.close(id, outcome)`
 
 ### Full Review
 **When:** Before creating Pull Request
@@ -26,7 +26,7 @@ Run before committing each task. **Failures block commits** - maintain TDD rigor
 - [ ] Naming is clear and descriptive
 - [ ] No type errors (if applicable)
 
-### Log Results in TASKLOG
+### Log Results to the Task Record
 
 ```markdown
 ### Review Results
@@ -41,7 +41,7 @@ Run before committing each task. **Failures block commits** - maintain TDD rigor
 
 **If issues found:**
 - Fix before committing
-- Document in TASKLOG with severity
+- `record.append(id, ...)` with severity
 - Critical issues block commit
 
 See: `core/workflow/implementation.md` for full task cycle
@@ -81,8 +81,8 @@ Before creating a Pull Request:
 - [ ] No XSS risks
 
 ### Completeness
-- [ ] All tasks in BUILD-TODO.md are marked done
-- [ ] TASKLOG-*-CURRENT.md entries are complete
+- [ ] `task.status()` shows no open tasks in the phase
+- [ ] Every completed task has a closed record (`record.close` ran)
 - [ ] Documentation updated if needed
 - [ ] README updated if setup changed
 
@@ -101,7 +101,7 @@ Before creating a Pull Request:
 
 Run as the final step of the Full Review, before creating the PR. This is the phase-level pattern pass — looking across the full implementation arc for trends that individual post-task scans may have missed.
 
-Review LESSONS.md deferred items (resolve or discard those with sufficient evidence), scan for cross-task patterns (recurring error types, consistently skipped steps, tasks that took longer than estimated), apply in-place edits for clear lessons, and add a phase summary to TASKLOG.
+Review LESSONS.md deferred items (resolve or discard those with sufficient evidence), scan for cross-task patterns (recurring error types, consistently skipped steps, tasks that took longer than estimated), apply in-place edits for clear lessons, and `record.append(id, ...)` a phase summary.
 
 For the full phase sweep protocol and output formats see: `core/workflow/reflection.md` (Phase Reflection Sweep section)
 

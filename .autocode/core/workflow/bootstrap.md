@@ -16,12 +16,51 @@ Before starting bootstrap, verify:
 
 - [ ] Dev container is running and `autocode` setup has been run inside it
 - [ ] `.autocode/` is present (run `setup.sh` from the host if not)
-- [ ] Planning docs exist: `REQUIREMENTS.md`, `ARCHITECTURE.md`, `SPECS.md`, `doc/BUILD-TODO.md`
+- [ ] Planning docs exist: `REQUIREMENTS.md`, `ARCHITECTURE.md`, `SPECS.md`, `doc/BUILD-PLAN.md`
+- [ ] A task-tracking adapter is bound (`setup.sh --tracker <name>`) and the approved phase plan has
+      been digested into it (`plan.digest`)
 - [ ] Git is initialized (`git init` or cloned from remote)
 - [ ] Remote is configured (`git remote add origin <url>`)
 - [ ] `npm install` has been run in `.autocode/scripts/` (harness dependency)
+- [ ] The bound adapter's prerequisites are installed in the dev container (step 0 below)
 
 ## Steps
+
+### 0. Tracker Preflight
+
+The bound task-tracking adapter may require binaries or credentials. Those are declared in its
+`conventions.md` under *Prerequisites* — prose the agent reads, which nothing verifies on its own.
+
+Check them now, inside the dev container, because that is where they are needed. `setup.sh` runs on
+the host and cannot check this for you.
+
+```bash
+# Which adapter is bound?
+cat .autocode/task-tracking/ACTIVE
+
+# Read its prerequisites and verify each one
+# .autocode/task-tracking/<adapter>/conventions.md  → Prerequisites
+```
+
+For example, the `github-issues` adapter needs `gh` (authenticated, with `repo` or `public_repo`
+scope) and `jq`:
+
+```bash
+command -v gh jq && gh auth status
+```
+
+The `markdown` adapter needs nothing beyond git.
+
+**Why this is a bootstrap step rather than a runtime concern.** The autonomous harness does check —
+`phase-status.sh` exits non-zero with a pointer to the adapter's prerequisites. But that check fires
+on the harness's first session, which under the default schedule is 10 PM with nobody watching, and
+three consecutive failures trip the circuit breaker. Catching it here costs ten seconds; catching it
+there costs a night.
+
+Install these in the dev container image rather than ad hoc, so a container rebuild does not silently
+remove them.
+
+---
 
 ### 1. Secrets & API Keys
 
@@ -305,7 +344,8 @@ The commit should include:
 - Linting config files
 - `.env.example` (not `.env`)
 - `.gitignore`
-- Planning docs (`REQUIREMENTS.md`, `ARCHITECTURE.md`, `SPECS.md`, `doc/BUILD-TODO.md`)
+- Planning docs (`REQUIREMENTS.md`, `ARCHITECTURE.md`, `SPECS.md`) and any tracker files the bound
+  adapter keeps in the repo
 - `.autocode/` (if using `--copy` mode) or symlinks
 - `.claude/` (commands, `CLAUDE.md`, `settings.json`)
 - Configured `.git/hooks/pre-commit`
@@ -337,13 +377,14 @@ Bootstrap is complete when:
 - [ ] No swallowed async failures — startup/boot errors land in an observable sink
 
 The project is now ready for the implementation cycle. Next:
-1. Review `doc/BUILD-TODO.md` with the agent — confirm phase 1 tasks are clear
-2. Initialize the TASKLOG: see `core/workflow/planning.md` → *Initializing TASKLOG*
+1. Run `task.status()` with the agent — confirm phase 1 tasks are clear
+2. Confirm the phase plan has been digested (`plan.digest`) and a record surface exists
 3. Start the harness (autonomous) or `/project:task-cycle` (supervised)
 
 ## Related Files
 
-- `core/workflow/planning.md` — full planning workflow and TASKLOG initialization
+- `core/workflow/task-tracking.md` — task tracking contract and adapter binding
+- `core/workflow/planning.md` — full planning workflow and plan digest
 - `core/workflow/implementation.md` — task execution cycle
 - `core/workflow/tdd.md` — *Test Tiers: Beyond Unit Tests* (the reasoning behind step 4)
 - `templates/BOOTSTRAP-CHECKLIST.md.template` — copyable acceptance checklist with status indicators

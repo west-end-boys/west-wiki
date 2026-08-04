@@ -7,7 +7,7 @@ Run a structured reflection pass to extract lessons from session work and apply 
 ```
 /project:reflect              # Lightweight scan (post-task default)
 /project:reflect deep         # Full session scan (pre-compact)
-/project:reflect phase        # Phase-level sweep (pre-PR, reads LESSONS.md trends)
+/project:reflect phase        # Phase-level sweep (pre-PR, reads LESSONS.md and task-record trends)
 ```
 
 ## When to Use
@@ -25,7 +25,7 @@ The post-task lightweight scan runs automatically as Step 8.5 of the task cycle.
 
 **Deep** — Scans full session conversation. Cross-references existing LESSONS.md deferred items for recurrence. Looks for cross-task patterns. Answers: "what would I tell my past self at the start of this session?" Run before every `/compact`. 5-10 minutes.
 
-**Phase** — Reviews LESSONS.md and TASKLOG trends across the full implementation phase. Resolves deferred items with enough evidence, discards stale ones, identifies cross-phase patterns. 10-15 minutes.
+**Phase** — Reviews LESSONS.md and task-record trends across the full implementation phase. Resolves deferred items with enough evidence, discards stale ones, identifies cross-phase patterns. 10-15 minutes.
 
 ## Process
 

@@ -3,22 +3,30 @@
 ## Two Levels of Planning
 
 ### Full Planning (Project/Phase Start)
-Create BUILD-TODO.md with complete task breakdown for entire project or phase.
+Produce a **phase plan** — a complete task breakdown for the project or phase — get it approved,
+then digest it into the tracker with `plan.digest(phasePlan)`.
 
 ### Mini-Planning (Task Start)
-Create focused plan for single task in TASKLOG.
+Produce a focused plan for a single task and open a task record with it: `record.open(id, plan)`.
 
 ## Before You Code
 
 Never start coding without a plan. Even "quick fixes" benefit from 30 seconds of thought.
 
-**Full plan** for projects/phases → BUILD-TODO.md
-**Mini-plan** for individual tasks → TASKLOG
+**Full plan** for projects/phases → phase plan → `plan.digest(phasePlan)`
+**Mini-plan** for individual tasks → `record.open(id, plan)`
+
+Task-tracking operations are defined in `core/workflow/task-tracking.md` and implemented by the
+bound adapter.
 
 ## Input Documents
 
 ### Required
 - **REQUIREMENTS.md** - What to build (features, user stories)
+
+### Produced by this workflow
+- **doc/BUILD-PLAN.md** - The phase plan. Human-approved, then frozen. Carries no task status; after
+  `plan.digest` it carries a link to the queue where its tasks were scoped.
 
 ### Recommended
 - **ARCHITECTURE.md** - System structure, components, data flow
@@ -27,13 +35,21 @@ Never start coding without a plan. Even "quick fixes" benefit from 30 seconds of
 ### If Missing
 Ask the human to provide them, or offer to help create them.
 
-## Full Planning: Creating BUILD-TODO.md
+## Full Planning: Producing the Phase Plan
 
 Break work into small, testable tasks. Each task should:
 - Take 5-15 minutes to complete
 - Be independently testable
 - Have clear acceptance criteria
 - Follow dependency order
+
+The phase plan is a **planning artifact**, not the tracker. It is human-approved and frozen after
+approval. It carries no task status — after digest it carries a link to where its tasks have been
+scoped, so status is always one hop away and never needs copying back.
+
+The plan is a **core planning artifact**, not a tracker file: it lives at `doc/BUILD-PLAN.md`,
+alongside `REQUIREMENTS.md`, `ARCHITECTURE.md` and `SPECS.md`. The adapter owns the queue and the
+task records — not the plan.
 
 ### Format
 ```markdown
@@ -45,36 +61,67 @@ Break work into small, testable tasks. Each task should:
 ## Tasks
 
 ### Phase 1: Foundation
-- [ ] Task 1: [Description]
+- Task 1.1: [Description]
   - Test: [What test proves this works]
   - Files: [Files to create/modify]
-- [ ] Task 2: [Description]
+- Task 1.2: [Description]
   ...
 
 ### Phase 2: Core Features
-- [ ] Task 3: [Description]
+- Task 2.1: [Description]
   ...
 
 ## Dependencies
-- Task 2 depends on Task 1
+- Task 1.2 depends on Task 1.1
 - Phase 2 depends on Phase 1
 
 ## Open Questions
 - [Any unclear requirements]
 ```
 
+## Getting Approval
+
+Before digesting or implementing:
+1. Present the plan to human
+2. Explain key decisions and tradeoffs
+3. Ask if anything is missing or wrong
+4. Get explicit "go ahead" before coding
+
+Validate the plan against the checklist below **before** presenting it.
+
+## Digesting the Plan — `plan.digest(phasePlan)`
+
+Once the plan is approved, digest it into the tracker. This is the step that turns a frozen,
+low-volatility planning artifact into a live, high-volatility task queue.
+
+`plan.digest(phasePlan)` creates one queue entry per planned task, carrying:
+- task ID (stable, referenceable from commit messages)
+- description
+- acceptance criteria (the `Test:` line)
+- file list
+- dependencies
+
+It also writes a back-link into the phase plan naming where the tasks have been scoped, and
+initializes the record surface for the first phase so `record.open` has somewhere to write.
+
+**Digest is idempotent.** Re-running it after a plan amendment adds new tasks and updates
+descriptions. It never resets status on work already done.
+
+**After digest, the plan carries no status.** Status lives in exactly one place — the queue
+(contract invariants 1 and 3). The plan links to the queue rather than repeating it. If the plan
+was authored with `- [ ]` checkboxes, digest strips them; a second document carrying the same
+checkbox is a guaranteed future inconsistency, and it is always the plan's copy that goes stale.
+
+See the bound adapter's `operations.md` for the concrete mechanics.
+
 ## Mini-Planning: Task-Level Plans
 
-Before executing each task, create a mini-plan in TASKLOG-*-CURRENT.md:
+Before executing each task, `record.open(id, plan)` with:
 
 ```markdown
-## Task [ID]: [Description]
-**Status:** 🔄 In Progress
-**Started:** [timestamp]
-
 ### Mini-Plan
 - **Goal:** [One sentence - what does success look like?]
-- **Approach:** 
+- **Approach:**
   - [Step 1]
   - [Step 2]
   - [Step 3]
@@ -91,86 +138,26 @@ Before executing each task, create a mini-plan in TASKLOG-*-CURRENT.md:
 - Files: Concrete file paths
 
 **When to create:**
-After picking task from BUILD-TODO.md, before writing any code
+After `task.next()` and `task.claim(id)`, before writing any code
 
-**Commit mini-plan:**
-```bash
-git add doc/TASKLOG-*-CURRENT.md
-git commit -m "docs(tasklog): add plan for task [ID]"
-```
+Whether opening the record produces a commit is adapter-specific — see the bound adapter's
+`operations.md`.
 
-See: `templates/TASKLOG.md.template` for full format
+## Starting a New Phase
 
-## Initializing TASKLOG
+When a phase finishes, `phase.complete(phaseId)` closes it and readies the next phase's record
+surface. See `core/workflow/implementation.md` → *Phase Completion*.
 
-After creating BUILD-TODO.md and getting approval, initialize TASKLOG for the first phase.
-
-### TASKLOG Naming Convention
-
-**Active TASKLOG:**
-```
-TASKLOG-[firstId]-CURRENT.md
-```
-
-Examples:
-- `TASKLOG-1.1-CURRENT.md` - Starting from task 1.1
-- `TASKLOG-2.1-CURRENT.md` - New phase starting from task 2.1
-
-**Archived TASKLOG:**
-```
-TASKLOG-[firstId]-[lastId].md
-```
-
-Examples:
-- `TASKLOG-1.1-1.8.md` - Completed phase 1, tasks 1.1 through 1.8
-- `TASKLOG-2.1-2.5.md` - Completed phase 2, tasks 2.1 through 2.5
-
-### Creating Initial TASKLOG
-
-```bash
-# Copy from template
-cp templates/TASKLOG.md.template doc/TASKLOG-1.1-CURRENT.md
-
-# Edit file to add phase information in header:
-# ## Overview
-# **Phase:** Phase 1: Foundation
-# **Started:** 2024-01-15
-
-# Commit
-git add doc/TASKLOG-1.1-CURRENT.md
-git commit -m "docs: initialize TASKLOG for phase 1"
-```
-
-### When Starting New Phase
-
-When beginning a new phase (after archiving the previous TASKLOG):
-
-```bash
-# Copy from template
-cp templates/TASKLOG.md.template doc/TASKLOG-2.1-CURRENT.md
-
-# Update header with new phase info
-# Commit
-git add doc/TASKLOG-2.1-CURRENT.md
-git commit -m "docs: initialize TASKLOG for phase 2"
-```
-
-See: `core/workflow/implementation.md` for TASKLOG rotation and archiving
-
-## Getting Approval (Full Plans)
-
-Before implementing:
-1. Present the plan to human
-2. Explain key decisions and tradeoffs
-3. Ask if anything is missing or wrong
-4. Get explicit "go ahead" before coding
+If the next phase needs planning that has not been done yet, produce and approve its phase plan
+first, then `plan.digest(phasePlan)` again — digest is idempotent and will add only the new tasks.
 
 ## Updating the Plan
 
 Plans change. When they do:
-1. Update BUILD-TODO.md with new/changed tasks
-2. Mark completed tasks with [x]
-3. Note any deferred items
+1. Amend the phase plan with new/changed tasks
+2. Re-run `plan.digest(phasePlan)` — existing status is preserved
+3. For work discovered mid-flight, use `task.add(...)` instead; it enters the queue directly and
+   does not amend the approved plan
 4. Communicate changes to human
 
 ## For Existing Codebases
@@ -186,7 +173,8 @@ When adding to existing code:
 
 ## Plan Validation
 
-After creating BUILD-TODO.md, validate it meets quality standards before proceeding.
+Run this against the **phase plan**, before approval and before digest. It validates the plan — not
+the queue. Queue health is `task.status()`.
 
 ### Validation Checklist
 
@@ -246,6 +234,12 @@ After creating BUILD-TODO.md, validate it meets quality standards before proceed
 - [ ] Respects module boundaries
 - [ ] Doesn't introduce unnecessary coupling
 
+#### 5. Digestibility
+
+- [ ] Every task has a stable, unique ID
+- [ ] Dependencies reference task IDs, not prose descriptions
+- [ ] No task carries a status field or checkbox — status is the queue's job
+
 ### Red Flags
 
 **Critical Issues**
@@ -265,7 +259,7 @@ After creating BUILD-TODO.md, validate it meets quality standards before proceed
 ```markdown
 ## Plan Validation Report
 
-### Plan: [BUILD-TODO.md title]
+### Plan: [phase plan title]
 
 ### Structure Check
 - Overview: ✅/❌
@@ -306,3 +300,8 @@ When plan needs revision:
 3. **Missing dependencies**: Trace what each task needs
 4. **Scope creep**: Remove or defer unrequested items
 5. **Missing tests**: Add test specification for each task
+
+## Related Files
+
+- `core/workflow/task-tracking.md` - Task tracking contract
+- `core/workflow/implementation.md` - Task execution cycle and phase completion

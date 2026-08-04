@@ -5,8 +5,8 @@ Orchestrate full task execution following TDD workflow with planning and review.
 ## Purpose
 
 Automate the complete task cycle from planning through completion:
-1. Pick task from BUILD-TODO.md
-2. Create mini-plan
+1. `task.next()` — pick a task, `task.claim(id)`
+2. `record.open(id, plan)` — mini-plan
 3. Execute TDD cycle (RED-GREEN-REFACTOR)
 4. Run quick review
 5. Commit
@@ -28,32 +28,32 @@ Pauses for human approval after creating mini-plan.
 When running under the auto-resume harness (`node .autocode/scripts/auto-resume-harness.js`):
 - Context compaction is handled automatically — the harness detects rate limits and resumes sessions with a fresh context window, injecting a reflection pass on resume.
 - Phase boundaries trigger a phase-end reflection session before moving to the next phase.
+- The harness reads phase status through the bound adapter's machine interface — see
+  `core/workflow/task-tracking.md` §Machine Interface.
 - No manual `/compact` needed; the harness owns the session lifecycle.
 
 ## Process
 
 ### 1. Pick Task
 
-If taskId not specified, select next uncompleted task from BUILD-TODO.md:
-- Respect dependencies
-- Skip blocked tasks
-- Choose first available task
+If taskId not specified, call `task.next()`:
+- Respects dependencies
+- Skips blocked tasks
+- Returns the first available task
 
-If taskId specified, verify:
-- Task exists in BUILD-TODO.md
+If taskId specified, `task.get(taskId)` and verify:
+- Task exists in the queue
 - Task not already complete
 - Dependencies satisfied
+
+Then `task.claim(taskId)`.
 
 ### 2. Create Mini-Plan
 
 Call: `/project:log-task start [taskId]`
 
-Agent creates mini-plan in doc/TASKLOG-*-CURRENT.md:
+Agent calls `record.open(taskId, plan)` with:
 ```markdown
-## Task [ID]: [Description]
-**Status:** 🔄 In Progress
-**Started:** [timestamp]
-
 ### Mini-Plan
 - **Goal:** [One sentence outcome]
 - **Approach:** 
@@ -76,13 +76,13 @@ Follow RED-GREEN-REFACTOR workflow:
 #### RED Phase
 - Write failing test
 - Verify meaningful failure (not syntax error)
-- Call: `/project:log-task tdd [taskId] red`
+- Call: `/project:log-task tdd [taskId] red` (`record.append`)
 - Commit: `test(scope): add test for [behavior]`
 
 #### GREEN Phase
 - Write minimal implementation
 - Run tests to verify pass
-- Call: `/project:log-task tdd [taskId] green`
+- Call: `/project:log-task tdd [taskId] green` (`record.append`)
 - Commit: `feat(scope): implement [behavior]`
 
 #### Just-In-Time TDD Check
@@ -97,7 +97,7 @@ Before REFACTOR:
 - Improve code clarity
 - Remove duplication
 - Keep tests green
-- Call: `/project:log-task tdd [taskId] refactor`
+- Call: `/project:log-task tdd [taskId] refactor` (`record.append`)
 - Commit: `refactor(scope): extract [what] for clarity`
 
 **If refactoring needed before new code:**
@@ -121,8 +121,8 @@ See: `core/workflow/review.md` for full checklist
 Call: `/project:log-task complete [taskId]`
 
 Updates:
-- TASKLOG with review results and outcome
-- BUILD-TODO.md marks task done: `- [ ]` → `- [x]`
+- `record.close(taskId, outcome)` — review results and outcome
+- `task.complete(taskId, commits)` — marks the task done and links its commits
 
 Commit: `docs: complete task [taskId] - [description]`
 
@@ -132,6 +132,8 @@ Prompt: "Task [taskId] complete. Continue with next task? (y/n)"
 
 If yes, loop to step 1
 If no, end cycle
+
+When `task.next()` returns nothing for the current phase, call `phase.complete(phaseId)`.
 
 ## Modes
 
@@ -214,8 +216,8 @@ Summary:
 - Issues: None
 
 Updated:
-- doc/TASKLOG-1.1-CURRENT.md
-- doc/BUILD-TODO.md
+- Task record closed (record.close)
+- Task marked complete (task.complete)
 
 Continue with next task? (y/n)
 ```
@@ -224,8 +226,8 @@ Continue with next task? (y/n)
 
 ### Task Not Found
 ```
-Error: Task 1.2 not found in BUILD-TODO.md
-Available tasks: [list]
+Error: task.get(1.2) returned nothing.
+Available tasks: [list from task.status()]
 ```
 
 ### Dependency Not Met
@@ -262,7 +264,7 @@ Fix issues before committing? (y/abort)
 
 ```bash
 # Full workflow
-/project:plan              # Create BUILD-TODO.md
+/project:plan              # Produce the phase plan and digest it
 /project:task-cycle 1.1    # Execute first task
 /project:task-cycle 1.2    # Execute second task
 ...
@@ -280,16 +282,17 @@ Can interleave manual work:
 
 ## Notes
 
-- Assumes BUILD-TODO.md exists and is up to date
-- Assumes TASKLOG-*-CURRENT.md exists
-- Uses `/project:log-task` internally for TASKLOG updates
+- Assumes the phase plan has been digested (`plan.digest`) and the queue is up to date
+- Assumes a task record surface exists
+- Uses `/project:log-task` internally for `record.*` updates
 - Enforces TDD rigorously (no shortcuts)
 - Quick review blocks commits (maintain quality)
 - Git commits use conventional commit format
 
 ## Related Files
 
+- `core/workflow/task-tracking.md` - Task tracking contract (the operations used above)
 - `core/workflow/implementation.md` - Full task cycle details
 - `core/workflow/tdd.md` - TDD process details
 - `core/workflow/review.md` - Review checklists
-- `agents/claude-code/commands/log-task.md` - TASKLOG automation
+- `agents/claude-code/commands/log-task.md` - task record automation

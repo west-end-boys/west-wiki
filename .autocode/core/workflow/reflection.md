@@ -14,7 +14,7 @@ The reflection pass converts raw session experience into durable guidelines. It 
 |------|---------|-------|-------------|
 | **Lightweight** | After Step 8 of task cycle (Step 8.5) | Current task conversation | ~1 min if signals; ~10s if none |
 | **Deep** | Context window warning, `/project:reflect deep`, end of session | Full session conversation | 5-10 min |
-| **Phase** | Full Review (pre-PR), `/project:reflect phase` | LESSONS.md + TASKLOG trends | 10-15 min |
+| **Phase** | Full Review (pre-PR), `/project:reflect phase` | LESSONS.md + task record trends | 10-15 min |
 
 The lightweight scan is embedded in `core/workflow/implementation.md` Step 8.5. Deep and phase modes are described in full below.
 
@@ -66,6 +66,7 @@ Can you state in one or two sentences what guideline would have prevented this? 
 | Test structure mistake | `lang/{language}/testing.md` | Language |
 | Wrong tool usage | `lang/{language}/tooling.md` | Language |
 | Workflow step skipped or out of order | `core/workflow/{relevant}.md` | Core |
+| Task-tracking mechanics unclear or wrong | `task-tracking/{adapter}/operations.md` or `conventions.md` | Adapter |
 | TDD violation pattern | `core/workflow/tdd.md` | Core |
 | Communication or clarification failure | `core/collaboration/communication.md` | Core |
 | Repeated anti-pattern | `core/principles/anti-patterns.md` | Core |
@@ -99,9 +100,9 @@ Add an entry to the Deferred Opportunities table:
 | [date] | [brief description] | [domain: lang/ts, core/workflow, etc.] | 1 | Low | Open |
 ```
 
-Add to `BUILD-TODO.md` as low-priority:
-```markdown
-- [ ] [LOW] Resolve deferred learning: [brief description] (see doc/LESSONS.md)
+Then `task.add(...)` a low-priority queue entry:
+```
+[LOW] Resolve deferred learning: [brief description] (see doc/LESSONS.md)
 ```
 
 ---
@@ -164,9 +165,9 @@ Scanned: [task/session/phase]
 
 ---
 
-## TASKLOG Integration
+## Task Record Integration
 
-After any reflection pass, update the current TASKLOG entry:
+After any reflection pass, `record.append(id, ...)` to the current task record:
 
 ```markdown
 **Signals noted:** [brief description of corrections/extra steps, or "none"]
@@ -193,17 +194,17 @@ Act immediately when any of the following occur:
 Time-box the full pass to 10 minutes if context pressure is high — capture something over nothing.
 
 1. **Scan full conversation** from the beginning for all five signal types (Step 1 above). Keep a running list — do not act yet.
-2. **Eliminate duplicates** — cross-reference TASKLOG reflection notes and LESSONS.md for signals already acted on.
+2. **Eliminate duplicates** — cross-reference task-record reflection notes and LESSONS.md for signals already acted on.
 3. **Triage remaining signals** (Step 2 above). Prioritize error → fix sequences first (highest signal quality). Defer anything requiring significant deliberation.
 4. **Apply in-place edits** before compaction. Commit each with upstream notifications as needed.
 5. **Write LESSONS.md deferred entries** for anything that couldn't be cleanly resolved. A rough entry beats nothing.
-6. **Update TASKLOG** with summary:
+6. **`record.append(id, ...)`** with a summary:
    ```markdown
    **Pre-Compact Reflection:** [N signals found] | [X applied in-place] | [Y deferred to LESSONS.md] | [Z upstream contributions]
    ```
-7. **Commit everything:**
+7. **Commit everything** — plus any in-repo tracker files the adapter touched:
    ```bash
-   git add doc/LESSONS.md TASKLOG-*-CURRENT.md
+   git add doc/LESSONS.md
    git commit -m "docs: pre-compact reflection pass"
    ```
 
@@ -213,13 +214,13 @@ If context limit is imminent and there is no time for a full pass:
 
 1. Write a single LESSONS.md deferred entry capturing the session summary: what was worked on, what didn't go as planned, what felt uncertain
 2. Commit it
-3. Note in TASKLOG: `**Pre-Compact Reflection:** Emergency capture only — full triage deferred`
+3. `record.append(id, ...)`: `**Pre-Compact Reflection:** Emergency capture only — full triage deferred`
 
 ### Post-Compact Continuity
 
 After compaction, at the start of the next task:
 1. Read `doc/LESSONS.md` — check Deferred Opportunities for items relevant to upcoming work
-2. Read `TASKLOG-*-CURRENT.md` — confirm session state
+2. `task.status()` — confirm session state against the tracker
 3. Check recurrence counts on matching deferred items and escalate if warranted
 
 ---
@@ -241,7 +242,7 @@ Run as the final step of the Full Review (pre-PR). This is the phase-level patte
 
 3. **Apply in-place edits** for clear lessons (same protocol as lightweight scan)
 
-4. **Add phase summary to TASKLOG:**
+4. **`record.append(id, ...)` a phase summary:**
    ```markdown
    ## Phase Reflection Summary
    **Deferred items reviewed:** [N]

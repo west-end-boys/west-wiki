@@ -26,14 +26,19 @@ Process:
 ## Workflow
 
 1. Read project docs (ARCHITECTURE.md, REQUIREMENTS.md, SPECS.md)
-2. Create implementation plan in BUILD-TODO.md
-3. Get approval before coding
+2. Produce the phase plan
+3. Get approval before coding, then `plan.digest(phasePlan)`
 4. For each task:
-   - Create mini-plan in TASKLOG
-   - Execute TDD cycle (RED-GREEN-REFACTOR)
+   - `task.next()`, then `task.claim(id)`
+   - `record.open(id, plan)` — mini-plan
+   - Execute TDD cycle (RED-GREEN-REFACTOR), `record.append(id, ...)` at each phase
    - Quick review
-   - Update TASKLOG + BUILD-TODO.md
+   - `record.close(id, outcome)` then `task.complete(id, commits)`
    - Commit with conventional messages
+5. When the phase has no open tasks left: `phase.complete(phaseId)`
+
+Task-tracking operations are defined in `workflow/task-tracking.md` and implemented by the bound
+adapter. Never name a tracker file directly.
 
 ## Communication
 

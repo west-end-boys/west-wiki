@@ -1,18 +1,22 @@
 # Implementation Workflow
 
+All task-tracking operations below (`task.*`, `record.*`, `phase.*`) are defined in
+`core/workflow/task-tracking.md` and implemented by the bound adapter. Core never names a tracker
+file.
+
 ## The Implementation Cycle
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  1. Pick task from BUILD-TODO.md                      │
-│  2. Create mini-plan in TASKLOG                 │
+│  1. task.next()                                 │
+│  2. record.open(id, plan)                       │
 │  3. Write failing test (RED)                    │
 │  4. Implement (GREEN)                           │
 │  5. Refactor (if needed)                        │
 │  6. Quick review                                │
-│  7. Update TASKLOG + BUILD-TODO.md                    │
+│  7. record.close(id, outcome) + task.complete() │
 │  8. Commit (implementation + docs atomically)   │
-│  9. Loop until BUILD-TODO.md complete                 │
+│  9. Loop until the phase is complete            │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -26,21 +30,18 @@ Each cycle should be sized similarly to a single "ticket" assigned to a human de
 
 ## Step Details
 
-### 1. Pick Task
-- Choose the next uncompleted task from BUILD-TODO.md
-- Respect dependencies (don't skip ahead)
-- If blocked, note it in TASKLOG and pick another
+### 1. Pick Task — `task.next()`
+- `task.next()` returns the next unblocked task, respecting dependencies (don't skip ahead)
+- `task.get(id)` gives the description, acceptance criteria, and file list
+- `task.claim(id)` marks it in progress
+- If blocked, `record.append(id, note)` the blocker and pick another
 - Verify prerequisites are met
 - **Check `doc/LESSONS.md` Deferred Opportunities** for any items whose domain matches this task. If a match exists with recurrence ≥ 2, escalate its priority before starting. If recurrence ≥ 3, consider resolving the deferred learning first.
 
-### 2. Create Mini-Plan
-Add entry to TASKLOG-*-CURRENT.md:
+### 2. Create Mini-Plan — `record.open(id, plan)`
+Open the task record with a mini-plan:
 
 ```markdown
-## Task [ID]: [Description]
-**Status:** 🔄 In Progress
-**Started:** [timestamp]
-
 ### Mini-Plan
 - **Goal:** [One sentence - what does success look like?]
 - **Approach:**
@@ -51,19 +52,15 @@ Add entry to TASKLOG-*-CURRENT.md:
 - **Files:** [Files to create/modify]
 ```
 
-**Commit mini-plan:**
-```bash
-git add doc/TASKLOG-*-CURRENT.md
-git commit -m "docs(tasklog): add plan for task [ID]"
-```
-
-See: `templates/TASKLOG.md.template` for full format
+Do this before writing any code. Whether opening a record produces a commit is adapter-specific —
+a file-backed adapter commits the mini-plan; an adapter backed by an external tracker has nothing
+to commit. See the bound adapter's `operations.md`.
 
 ### 3. Write Failing Test (RED)
 - Describe the expected behavior
 - Run test, confirm it fails
 - Failure must be meaningful (not syntax error)
-- **Update TASKLOG:** Mark RED phase complete
+- **`record.append(id, ...)`:** Mark RED phase complete
 
 **Example verification:**
 ```
@@ -93,12 +90,12 @@ git commit -m "test(scope): add test for [behavior]"
 - Don't optimize yet
 - Don't handle edge cases not covered by tests
 - Run tests frequently
-- **Update TASKLOG:** Mark GREEN phase complete
+- **`record.append(id, ...)`:** Mark GREEN phase complete
 
 **Guidelines:**
 - Ugly code that passes > elegant code that doesn't exist
 - Feature creep is not allowed - stick to task scope
-- If you discover additional needs, add to BUILD-TODO.md
+- If you discover additional needs, `task.add(...)`
 
 **Commit implementation:**
 ```bash
@@ -112,7 +109,7 @@ git commit -m "feat(scope): implement [behavior]"
 - If tests break, undo immediately
 - Improve readability, remove duplication
 - Extract functions if clarity improves
-- **Update TASKLOG:** Mark REFACTOR phase complete or N/A
+- **`record.append(id, ...)`:** Mark REFACTOR phase complete or N/A
 
 **Commit refactoring:**
 ```bash
@@ -134,19 +131,22 @@ Run pre-commit checks while the implementation is fresh in mind — before touch
 
 See: `core/workflow/review.md` for full review process
 
-### 7. Update TASKLOG + BUILD-TODO.md
-With review complete and the work still fresh, finalize the TASKLOG entry and mark BUILD-TODO.md.
+### 7. Close the Record and Complete the Task
+With review complete and the work still fresh, `record.close(id, outcome)` then
+`task.complete(id, commits)`.
 
 **Documentation update rules — where each fact belongs:**
 
 | What changed | Update here | Do NOT add to CLAUDE.md |
 |---|---|---|
-| Task completed | `BUILD-TODO.md` (mark `[o]`), TASKLOG | Phase status, task counts |
+| Task completed | `task.complete(id, commits)`, `record.close(id, outcome)` | Phase status, task counts |
 | New source file created | `ARCHITECTURE.md` (if layout section exists) | Source file tree |
 | New convention discovered | `DEVELOPMENT.md` or `doc/LESSONS.md` | Convention rationale |
 | New stable rule or codebase gotcha | `CLAUDE.md` ← only case | — |
 
 `CLAUDE.md` receives additions only for **stable rules and codebase-specific gotchas** that are not documented anywhere else. Progress, source layouts, and rationale belong in their authoritative homes. See `principles/best-practices.md` §Documentation for the full volatility/scope model.
+
+`record.close(id, outcome)` captures:
 
 ```markdown
 ### Review Results
@@ -169,15 +169,20 @@ With review complete and the work still fresh, finalize the TASKLOG entry and ma
 **Learnings:** Regex approach simpler than parser library
 ```
 
-Mark task done in BUILD-TODO.md: `- [ ]` → `- [o]` (implemented, pending verification)
+Then `task.complete(id, commits)` marks the task implemented and links its commits. How that is
+represented — a status glyph, an issue transition — is adapter detail.
 
 ### 8. Commit
 Commit implementation and docs atomically — they travel together so rollback always leaves docs and code in sync:
 
 ```bash
-git add [implementation-files] [test-files] doc/TASKLOG-*-CURRENT.md doc/BUILD-TODO.md
+git add [implementation-files] [test-files]
 git commit -m "feat(scope): implement [behavior]"
 ```
+
+If the bound adapter keeps tracker state in the repo, stage it in this same commit — its
+`operations.md` names the files. An adapter backed by an external tracker stages nothing extra; the
+commit message alone carries the task reference.
 
 ### 8.5. Lightweight Reflection Scan
 
@@ -185,65 +190,36 @@ While the task's conversation is fresh, scan for signals that may indicate a gui
 
 **Scan conversation history for:** approach pivots, multi-edit files (corrective, not refactoring), unplanned steps, error → fix sequences, multiple attempts at the same goal.
 
-**Triage each signal:** lesson clear + target file obvious → apply in-place, commit, notify if autocode-level. Otherwise → defer to `doc/LESSONS.md`, add low-priority TODO item.
+**Triage each signal:** lesson clear + target file obvious → apply in-place, commit, notify if autocode-level. Otherwise → defer to `doc/LESSONS.md`, and `task.add(...)` a low-priority item.
 
-**Update TASKLOG:** Add `Signals noted` and `Reflection` fields (see `templates/TASKLOG.md.template`).
+**`record.append(id, ...)`:** Add `Signals noted` and `Reflection` fields.
 
 For full signal definitions, triage process, and output formats see: `core/workflow/reflection.md`
 
 ### 9. Loop
-Return to step 1, pick next task
+Return to step 1, `task.next()`
 
-## Phase Completion and TASKLOG Rotation
+## Phase Completion — `phase.complete(phaseId)`
 
-When all tasks in a phase are complete, archive the current TASKLOG and prepare for the next phase.
+When `task.next()` returns nothing for the current phase, the phase is finished. Call
+`phase.complete(phaseId)`.
 
-### Archive Current TASKLOG
+This closes the phase, archives its task records, and readies the record surface for the next
+phase. The mechanics are entirely adapter-internal. Core does not need to know.
 
-```bash
-# Rename CURRENT to show task range
-git mv doc/TASKLOG-1.1-CURRENT.md doc/TASKLOG-1.1-1.8.md
+Archive commits reference a phase ID rather than a task ID. This is permitted by contract invariant
+5.
 
-# Commit the archive
-git add doc/TASKLOG-1.1-1.8.md
-git commit -m "docs: archive TASKLOG for phase 1 (tasks 1.1-1.8)"
-```
-
-**Why `git mv`?**
-Preserves the complete git history of all task entries through file rename tracking.
-
-### Start Next Phase TASKLOG
-
-See `core/workflow/planning.md` for initializing TASKLOG for new phases.
-
-### Subdividing Large Phases
-
-If a phase has many tasks (>15), subdivide mid-phase to keep active TASKLOG manageable:
-
-```bash
-# Archive first batch
-git mv doc/TASKLOG-1.1-CURRENT.md doc/TASKLOG-1.1-1.15.md
-git commit -m "docs: archive TASKLOG batch 1 (tasks 1.1-1.15)"
-
-# Start new TASKLOG for remaining tasks
-cp templates/TASKLOG.md.template doc/TASKLOG-1.16-CURRENT.md
-# Update header with phase info
-git add doc/TASKLOG-1.16-CURRENT.md
-git commit -m "docs: initialize TASKLOG batch 2 (starting 1.16)"
-```
-
-**Benefits:**
-- Active TASKLOG stays ~2,000-3,000 lines (10-15 tasks)
-- Archived TASKLOGs not loaded unless needed
-- Git history provides searchability without loading files
+See the bound adapter's `conventions.md` for archiving behavior and any mid-phase subdivision
+thresholds.
 
 ## Verification Checkpoints
 
 Before moving to next task, verify:
 - [ ] All tests pass
 - [ ] All code is committed
-- [ ] TASKLOG entry is complete
-- [ ] BUILD-TODO.md task is marked done
+- [ ] Task record is complete (`record.close` ran)
+- [ ] Task is marked done (`task.complete` ran)
 - [ ] No uncommitted changes (unless intentional WIP)
 - [ ] No new linting errors
 - [ ] No type errors (if applicable)
@@ -257,7 +233,7 @@ Before moving to next task, verify:
 4. Add debug output to understand behavior
 5. If stuck > 10 minutes, ask for help
 
-**Document in TASKLOG:**
+**`record.append(id, ...)`:**
 ```markdown
 ### TDD Cycle
 - RED: ✅ Test written and failing
@@ -269,12 +245,12 @@ Before moving to next task, verify:
 2. Understand WHY it happened
 3. Add test that catches the issue
 4. Then fix
-5. Document discovery in TASKLOG learnings
+5. `record.append(id, ...)` the discovery under learnings
 
 ### Scope Creep
 If you notice something else that needs fixing:
-1. Add it to BUILD-TODO.md as new task
-2. Note it in current TASKLOG entry
+1. `task.add(...)` it
+2. `record.append(id, ...)` a note in the current task record
 3. Don't fix it now - stay focused on current task
 
 ## Status Check
@@ -288,8 +264,8 @@ At session start, verify:
 - [ ] No uncommitted work (check git status)
 
 ### Documentation State
-- [ ] BUILD-TODO.md reflects current plan
-- [ ] TASKLOG-*-CURRENT.md exists and is up to date
+- [ ] `task.status()` reflects the approved phase plan
+- [ ] The task record surface exists and is up to date
 - [ ] HANDOFF.md reviewed (if exists)
 
 ### Alignment
@@ -306,7 +282,7 @@ Flag when:
 - Frequent blockers on simple tasks
 - Pattern of TDD violations
 
-**Document in TASKLOG** under learnings and report to human.
+**`record.append(id, ...)`** under learnings and report to human.
 
 ## Just-In-Time TDD Verification
 
@@ -380,7 +356,7 @@ If TDD violations found:
 
 ## Related Files
 
+- `workflow/task-tracking.md` - Task tracking contract (the operations used above)
 - `workflow/tdd.md` - Detailed TDD process
 - `workflow/planning.md` - Planning and mini-planning
 - `workflow/review.md` - Full review process
-- `templates/TASKLOG.md.template` - TASKLOG entry template

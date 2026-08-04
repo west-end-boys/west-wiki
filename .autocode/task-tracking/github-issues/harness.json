@@ -1,0 +1,5 @@
+{
+  "adapter": "github-issues",
+  "phaseStatusCommand": ["sh", "phase-status.sh"],
+  "concurrency": "multi-writer"
+}

@@ -16,6 +16,13 @@ goal state:
 
 - Workflow for adding autocode to existing codebases mid-stream
 - do gap analysis with bootstrap and plan a closure phase
+- Tracker preflight: retrofit needs the same check as `bootstrap.md` step 0 — verify the bound
+  adapter's `conventions.md` Prerequisites are installed in the dev container. An existing codebase
+  is *more* likely to need this, since its container image predates the adapter binding.
+- Existing trackers: a retrofitted project may already track work somewhere (GitHub issues, Jira, a
+  TODO file). Decide whether to bind an adapter to the existing tracker or digest it into a new one
+  — do not end up running two, which violates Single Source of Truth (`core/workflow/task-tracking.md`
+  invariant 1).
 - Could reference `core/principles/opinions.md` and lead into planning
 - Deterministic tool config per project (eslint, prettier, etc.)
   - Config rules for tools like ESLint should be created appropriate to language and use case (BE vs FE)

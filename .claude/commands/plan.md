@@ -1,8 +1,8 @@
 # /project:plan - Create Full Implementation Plan
 
-Generate a complete implementation plan (BUILD-TODO.md) for project or phase following TDD workflow.
+Produce a complete phase plan (`doc/BUILD-PLAN.md`) for the project or phase, get it approved, and digest it into the bound task tracker.
 
-**Note:** This creates a FULL plan (BUILD-TODO.md). For individual task plans, see mini-planning in TASKLOG via `/project:task-cycle`.
+**Note:** This creates a FULL plan. For individual task plans, see mini-planning (`record.open`) via `/project:task-cycle`.
 
 ## Instructions
 
@@ -22,6 +22,10 @@ Generate a complete implementation plan (BUILD-TODO.md) for project or phase fol
 
 5. Present plan to human for approval before proceeding
 
+6. After approval, `plan.digest(phasePlan)` — see @.autocode/core/workflow/task-tracking.md
+   This generates the task queue and writes a back-link into the plan naming where its tasks were
+   scoped. The plan keeps no status of its own.
+
 ## Output
 
 Present the plan with:
@@ -32,4 +36,9 @@ Present the plan with:
 - Open questions listed
 - Validation status
 
-Wait for explicit approval before implementing.
+Wait for explicit approval before digesting or implementing.
+
+## Related Files
+
+- `core/workflow/task-tracking.md` - the `plan.digest` operation and adapter binding
+- `core/workflow/planning.md` - full planning workflow and validation checklist

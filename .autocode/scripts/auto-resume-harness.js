@@ -6,7 +6,8 @@
  * Claude owns the task loop within a session; the harness manages:
  *   - Usage-window scheduling (10 PM – 7 AM)
  *   - Rate-limit detection + resume
- *   - Phase-boundary detection via BUILD-TODO.md parsing
+ *   - Phase-boundary detection via the bound task-tracking adapter's machine interface
+ *     (see core/workflow/task-tracking.md §Machine Interface)
  *   - Reflection injection at phase end and on resume after rate limit
  *   - Autonomous-blocker detection (only manual verification remains)
  *   - Discord notification when human input is required
@@ -24,6 +25,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 // External dependencies (mocked in tests via jest.mock())
@@ -42,7 +44,8 @@ try { ({ RateLimitError } = require('@anthropic-ai/sdk')); } catch (_) { /* use 
 // Configuration
 // ---------------------------------------------------------------------------
 
-const TODO_PATH = path.join('doc', 'BUILD-TODO.md');
+const TRACKING_DIR = path.join('.autocode', 'task-tracking');
+const ACTIVE_ADAPTER_PATH = path.join(TRACKING_DIR, 'ACTIVE');
 const STATE_PATH = path.join('.autocode', 'state', 'harness.json');
 const SUSPEND_PATH = path.join('.autocode', 'SUSPEND');
 const SECRETS_DIR = 'secrets';
@@ -147,58 +150,84 @@ function saveState(state, statePath = STATE_PATH) {
 }
 
 // ---------------------------------------------------------------------------
-// BUILD-TODO.md parsing
+// Task-tracking adapter — machine interface
+//
+// The harness does not know how the tracker is stored. It asks the bound adapter
+// for a normalized phase model and makes all scheduling decisions from that.
+// Contract: core/workflow/task-tracking.md §Machine Interface.
 // ---------------------------------------------------------------------------
 
-const PHASE_RE = /^## Phase (\d+)/;
-const TASK_RE = /^\s*- (\[[~ox -]\])\s+(.*)/;
-const VERIFY_RE = /\*\*Verify:\*\*\s*(.*)/i;
-
-function _parsePhases(content) {
-  const phases = [];
-  let current = null;
-
-  for (const line of content.split('\n')) {
-    const phaseMatch = PHASE_RE.exec(line);
-    if (phaseMatch) {
-      if (current) phases.push(current);
-      current = {
-        header: line.replace(/^#+\s*/, '').trim(),
-        number: phaseMatch[1],
-        tasks: [],
-      };
-      continue;
-    }
-
-    if (current === null) continue;
-
-    const taskMatch = TASK_RE.exec(line);
-    if (taskMatch) {
-      const status = taskMatch[1];
-      const desc = taskMatch[2];
-      const verifyMatch = VERIFY_RE.exec(desc);
-      const verifyText = verifyMatch ? verifyMatch[1] : '';
-      const isManual = MANUAL_MARKERS.some(m => verifyText.toLowerCase().includes(m.toLowerCase()));
-      current.tasks.push({
-        raw: line,
-        status,
-        description: desc,
-        verify_text: verifyText,
-        is_manual: isManual,
-      });
-    }
+/**
+ * Resolve the bound adapter from .autocode/task-tracking/ACTIVE.
+ * Returns { name, dir, config } or throws with an actionable message.
+ */
+function resolveAdapter(activePath = ACTIVE_ADAPTER_PATH) {
+  if (!fs.existsSync(activePath)) {
+    throw new Error(
+      `No task-tracking adapter bound (${activePath} missing). ` +
+      'Run setup.sh --tracker <name> in the project.',
+    );
   }
+  const name = fs.readFileSync(activePath, 'utf-8').trim();
+  if (!name) throw new Error(`${activePath} is empty — expected an adapter name.`);
 
-  if (current) phases.push(current);
-  return phases;
+  const dir = path.resolve(path.dirname(activePath), name);
+  const configPath = path.join(dir, 'harness.json');
+  if (!fs.existsSync(configPath)) {
+    throw new Error(
+      `Adapter "${name}" provides no harness.json — it is not harness-compatible. ` +
+      'See core/workflow/task-tracking.md §Machine Interface.',
+    );
+  }
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  if (!config.phaseStatusCommand) {
+    throw new Error(
+      `Adapter "${name}" declares phaseStatusCommand: null — it cannot drive the autonomous harness. ` +
+      'Use a harness-compatible adapter or run supervised.',
+    );
+  }
+  return { name, dir, config };
 }
 
-function getNextPhase(todoPath = TODO_PATH) {
-  const content = fs.readFileSync(todoPath, 'utf-8');
-  const phases = _parsePhases(content);
+/**
+ * Classify a task as requiring human action, based on its adapter-supplied verify text.
+ * The marker list describes what the *harness* cannot do, so it lives here, not in the adapter.
+ */
+function isManualTask(task) {
+  if (typeof task.manual === 'boolean') return task.manual;
+  const verify = (task.verify || '').toLowerCase();
+  return MANUAL_MARKERS.some(m => verify.includes(m.toLowerCase()));
+}
 
+/**
+ * Execute the adapter's phaseStatusCommand and return the normalized phase model.
+ * Task status values are the contract's: open | in_progress | done | deferred.
+ * Only "open" counts as remaining work.
+ */
+function readPhases(adapter = null) {
+  const resolved = adapter || module.exports.resolveAdapter();
+  const [cmd, ...args] = resolved.config.phaseStatusCommand;
+  const resolvedArgs = args.map(a =>
+    a.endsWith('.js') || a.endsWith('.sh') ? path.join(resolved.dir, a) : a,
+  );
+
+  const stdout = execFileSync(cmd, resolvedArgs, {
+    encoding: 'utf-8',
+    env: { ...process.env, AUTOCODE_ADAPTER_DIR: resolved.dir },
+  });
+
+  const model = JSON.parse(stdout);
+  for (const phase of model.phases || []) {
+    for (const task of phase.tasks || []) {
+      task.is_manual = isManualTask(task);
+    }
+  }
+  return model.phases || [];
+}
+
+function getNextPhase(phases) {
   for (const phase of phases) {
-    const incomplete = phase.tasks.filter(t => t.status === '[ ]');
+    const incomplete = phase.tasks.filter(t => t.status === 'open');
     if (incomplete.length === 0) continue;
     const autonomous = incomplete.filter(t => !t.is_manual);
     if (autonomous.length > 0) {
@@ -210,21 +239,19 @@ function getNextPhase(todoPath = TODO_PATH) {
 }
 
 function phaseIsBlocked(phase) {
-  const remaining = phase.tasks.filter(t => t.status === '[ ]');
+  const remaining = phase.tasks.filter(t => t.status === 'open');
   return remaining.length > 0 && remaining.every(t => t.is_manual);
 }
 
-function detectStateAfterSession(phase, todoPath = TODO_PATH) {
-  const content = fs.readFileSync(todoPath, 'utf-8');
-  const phases = _parsePhases(content);
+function detectStateAfterSession(phase, phases) {
   const updated = phases.find(p => p.number === phase.number);
 
   if (!updated) {
-    log.info('Phase %s no longer found in BUILD-TODO.md — treating as complete', phase.number);
+    log.info('Phase %s no longer reported by the tracker — treating as complete', phase.number);
     return 'phase_complete';
   }
 
-  const remaining = updated.tasks.filter(t => t.status === '[ ]');
+  const remaining = updated.tasks.filter(t => t.status === 'open');
   let result;
   if (remaining.length === 0) {
     result = 'phase_complete';
@@ -313,9 +340,9 @@ const AUTONOMOUS_PREAMBLE = `\
 You are running in fully autonomous mode. Rules:
 - Follow the TDD cycle in CLAUDE.md for every task.
 - Skip manual verification steps — rely on unit/integration test coverage instead.
-  Mark tasks that require only manual verification as [-] with reason "deferred: requires manual verification".
+  Mark tasks that require only manual verification as deferred, with reason "deferred: requires manual verification".
 - Do NOT pause and ask the user for input.
-- Commit TASKLOG + BUILD-TODO.md atomically with the implementation (single commit per task cycle).
+- Commit the task record and queue update atomically with the implementation (single commit per task cycle).
 - When all autonomous tasks in the current phase are done, output exactly this line so the harness can detect completion:
   PHASE_COMPLETE
 - If you encounter a task that cannot proceed without external information not available in the codebase, output:
@@ -328,17 +355,17 @@ function buildPhasePrompt(phase, isResume) {
 
 You are RESUMING execution of: ${phaseHeader}
 
-Check doc/BUILD-TODO.md for remaining [ ] tasks in this phase. Continue the TDD cycle from where you left off.
-Before picking up the next task, perform a lightweight reflection scan (per implementation.md §7.5) and commit any lessons to doc/LESSONS.md.
+Call task.status() for remaining open tasks in this phase. Continue the TDD cycle from where you left off.
+Before picking up the next task, perform a lightweight reflection scan (per implementation.md §8.5) and commit any lessons to doc/LESSONS.md.
 `;
   }
   return `${AUTONOMOUS_PREAMBLE}
 
 Begin executing: ${phaseHeader}
 
-1. Initialize or continue the TASKLOG for this phase.
+1. Confirm a task record surface exists for this phase; open one if not.
 2. Check doc/LESSONS.md for any deferred items matching this domain.
-3. Execute each [ ] task in phase order using the full TDD cycle.
+3. Execute each open task in phase order using the full TDD cycle (task.next / record.open / record.close / task.complete).
 4. Output PHASE_COMPLETE when all autonomous tasks are done.
 `;
 }
@@ -346,7 +373,7 @@ Begin executing: ${phaseHeader}
 function buildReflectionPrompt(context) {
   return `Perform a reflection pass now (${context}).
 
-Follow the Lightweight Reflection Scan in implementation.md §7.5:
+Follow the Lightweight Reflection Scan in implementation.md §8.5:
 - Scan for approach pivots, corrective multi-edits, unplanned steps, repeated errors.
 - Apply in-place edits to autocode guidelines if the lesson is clear.
 - Defer to doc/LESSONS.md otherwise.
@@ -453,6 +480,17 @@ async function runSession(prompt, sessionId, state, agentFactory = null) {
 
 async function runOrchestrator() {
   _setupLogging();
+
+  let adapter;
+  try {
+    adapter = resolveAdapter();
+    log.info('Task-tracking adapter: %s (%s)', adapter.name, adapter.config.concurrency || 'unspecified');
+  } catch (exc) {
+    log.error('Cannot start: %s', exc.message);
+    await notifyDiscord(`Harness cannot start: ${exc.message}`);
+    return;
+  }
+
   const state = loadState();
   log.info(
     'Harness starting — state=%s  limits=[max_sessions=%d, max_failures=%d, min_gap=%ds, backoff=%d–%ds]',
@@ -488,9 +526,18 @@ async function runOrchestrator() {
       break;
     }
 
+    let phases;
+    try {
+      phases = readPhases(adapter);
+    } catch (exc) {
+      log.error('Failed to read tracker state via adapter "%s": %s', adapter.name, exc.message);
+      await notifyDiscord(`Harness cannot read tracker state: ${exc.message}`);
+      break;
+    }
+
     let phase;
     if (state.current_phase === null || state.current_phase === undefined) {
-      phase = getNextPhase(TODO_PATH);
+      phase = getNextPhase(phases);
       if (phase === null) {
         log.info('All autonomous tasks complete — no further phases to run.');
         await notifyDiscord('All autonomous phases complete. Manual verification phases remain.');
@@ -501,11 +548,9 @@ async function runOrchestrator() {
       saveState(state);
       log.info('Selected phase %s: %s', phase.number, phase.header);
     } else {
-      const content = fs.readFileSync(TODO_PATH, 'utf-8');
-      const phases = _parsePhases(content);
       phase = phases.find(p => p.number === state.current_phase) || null;
       if (phase === null) {
-        log.warning('Phase %s not found in BUILD-TODO.md — resetting current_phase', state.current_phase);
+        log.warning('Phase %s not reported by the tracker — resetting current_phase', state.current_phase);
         state.current_phase = null;
         saveState(state);
         continue;
@@ -595,9 +640,9 @@ async function runOrchestrator() {
 
     let sessionState;
     try {
-      sessionState = detectStateAfterSession(phase);
+      sessionState = detectStateAfterSession(phase, readPhases(adapter));
     } catch (exc) {
-      log.error('Failed to read post-session BUILD-TODO.md state: %s', exc);
+      log.error('Failed to read post-session tracker state: %s', exc);
       consecutiveFailures += 1;
       sessionState = 'interrupted';
     }
@@ -680,11 +725,15 @@ module.exports = {
   BACKOFF_BASE_SECS,
   BACKOFF_MAX_SECS,
   ALLOWED_HOURS,
+  TRACKING_DIR,
+  ACTIVE_ADAPTER_PATH,
   // Functions
   log,
   loadState,
   saveState,
-  _parsePhases,
+  resolveAdapter,
+  isManualTask,
+  readPhases,
   getNextPhase,
   phaseIsBlocked,
   detectStateAfterSession,
