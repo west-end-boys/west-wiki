@@ -10,6 +10,8 @@ The system should help players discover opportunities, share knowledge, form adv
 
 Natural language should be a primary interface, allowing players and GMs to search, contribute, organize, and update the campaign without needing to understand the underlying data model.
 
+**Objective**: Help a player choose an adventure, act through an eligible character, find a valid GM time slot, organize the expedition, and then record the outcome.
+
 ## Core Principles
 
 - **Player agency drives play**. The system should help players decide where to go, why to go there, and who will join them.
