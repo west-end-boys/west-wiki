@@ -33,15 +33,99 @@ Natural language should be a primary interface, allowing players and GMs to sear
 
 The first version should support a basic West Marches play cycle:
 
-1. A player may select an available character
-2. The character may then browse adventure opportunities reachable from the character's current location
-3. The character creates a call to adventure describing an objective
-4. System validates location, availablility, and date
-5. Participating adventurers answer the call
-6. Other players may have their characters agree to participate
-7. System validets joining character location, avialability, and date
-8. Participating characters undertake the adventure
-9. Resulting report updates the characters and world state
+**1. Campaign setup**
+
+An administrator can configure:
+
+Maximum active characters per player, initially 3
+Campaign time zone
+Session duration defaults
+Regions or map areas
+Which GMs can run each region
+Public versus campaign-member access
+
+**2. Player and character management**
+
+A player can:
+
+Create and manage characters
+See each character’s current safe location
+See current and future commitments
+See when a character becomes available
+Retire or archive a character
+
+Character availability is calculated, not manually toggled.
+
+**3. Adventure opportunities**
+
+Players can browse:
+
+Known map locations
+Rumors
+Adventure hooks
+Open calls to adventure
+
+Each opportunity needs at least:
+
+Name
+Region
+Nearby departure location
+Public description
+Status
+Estimated session duration
+
+You do not necessarily need a sophisticated interactive map yet. A location list grouped by region could satisfy the MVP.
+
+**4. GM availability**
+
+A GM can publish:
+
+Available date and time windows
+Regions they are willing or authorized to run
+Maximum session duration
+Optional party-size limits
+
+**5. Create a call to adventure**
+
+A player:
+
+Selects one of their characters.
+Selects an adventure opportunity.
+Receives valid dates based on:
+Character location
+Character commitments
+Travel feasibility
+GM availability
+GM regional authorization
+Selects a valid time.
+Publishes the call to adventure.
+
+The call records both:
+
+The player who created it
+The character issuing it in the world
+
+**6. Join an expedition**
+
+Other players can choose a character to join.
+
+The system explains eligibility:
+
+Available
+Occupied by downtime
+Already committed elsewhere
+Too far away
+Dead, retired, missing, or otherwise inactive
+
+**7. Record the outcome**
+
+After the session:
+
+A player or GM submits a natural-language expedition report.
+The LLM proposes structured updates.
+A GM reviews and approves them.
+Character locations, commitments, discoveries, opportunities, and wiki entries are updated.
+A player-safe recap is published.
 
 ## Out of Scope for Initial Release
 
