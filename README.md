@@ -27,7 +27,7 @@ Natural language should be a primary interface, allowing players and GMs to sear
 - **The world changes through play.** Expeditions should update locations, characters, factions, threats, rumors, and available opportunities.
 - **Accepted changes retain provenance.** Important information should remain linked to its source, author, expedition, and revision history.
 - **Knowledge is permission-aware.** Users should only receive information appropriate to their role and current viewpoint.
-- T**raditional interfaces remain available.** Maps, lists, forms, timelines, and wiki pages should support browsing, review, and correction alongside the conversational interface.
+- **Traditional interfaces remain available.** Maps, lists, forms, timelines, and wiki pages should support browsing, review, and correction alongside the conversational interface.
 
 ## Initial MVP
 
