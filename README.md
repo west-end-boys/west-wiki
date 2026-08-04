@@ -2,7 +2,13 @@
 
 ## Mission
 
-Build a private, LLM-assisted campaign knowledge system for our West Marches Shadowdark campaign.
+Build a private, LLM-assisted campaign management and knowledge system for our West Marches Shadowdark campaign.
+
+A West Marches campaign is player-driven. It is organized around a persistent world map, a changing list of known locations and possible adventures, and a way for players to organize their own expeditions by issuing calls to adventure.
+
+The system should help players discover opportunities, share knowledge, form adventuring parties, and initiate expeditions. It should help GMs maintain a consistent living world, process the consequences of play, and control what information becomes canonical or visible.
+
+Natural language should be a primary interface, allowing players and GMs to search, contribute, organize, and update the campaign without needing to understand the underlying data model.
 
 ## Core Principles
 
