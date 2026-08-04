@@ -15,6 +15,7 @@ Natural language should be a primary interface, allowing players and GMs to sear
 - **Player agency drives play**. The system should help players decide where to go, why to go there, and who will join them.
 - **Players initiate play; GMs publish capacity.** GMs declare when and where they are available to run games. Players select opportunities through their characters, and the system matches those opportunities with valid GM time slots.
 - **One day equals one day**. Campaign time advances at the same rate as real-world time. If a character is committed to two weeks of downtime, travel, recovery, or another activity, that character is unavailable for two weeks of real-world time.
+- **Characters, not players, are committed in time.** A player may continue participating through another eligible character while one character is traveling, recovering, or performing downtime.
 - **The world map is central**. Locations, routes, regions, hazards, discoveries, and expeditions should connect back to the campaign map.
 - **Adventure opportunities remain visible.** Known locations, rumors, unresolved threats, patron requests, and calls to adventure should be easy to find.
 - **Players organize expeditions.** Players should be able to propose an objective, recruit participants, choose a date, and issue a call to adventure.
