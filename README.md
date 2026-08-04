@@ -12,14 +12,17 @@ Natural language should be a primary interface, allowing players and GMs to sear
 
 ## Core Principles
 
-- Natural language is a primary interface.
-- The LLM interprets and proposes; the application validates and authorizes.
-- GMs control canonical world truth.
-- Players can contribute without directly overwriting canon.
-- Accepted changes retain their source and history.
-- Users only see information permitted for their role and viewpoint.
-- Conventional interfaces remain available for browsing, review, and correction.
-- The initial product serves our private campaign before attempting broader generalization.
+- **Player agency drives play**. The system should help players decide where to go, why to go there, and who will join them.
+- **The world map is central**. Locations, routes, regions, hazards, discoveries, and expeditions should connect back to the campaign map.
+- **Adventure opportunities remain visible.** Known locations, rumors, unresolved threats, patron requests, and calls to adventure should be easy to find.
+- **Players organize expeditions.** Players should be able to propose an objective, recruit participants, choose a date, and issue a call to adventure.
+- **Natural language is a primary interface.** Users should be able to ask questions and describe actions in ordinary language.
+- **The LLM proposes; the application validates.** The LLM may interpret requests and suggest changes, but permissions, validation, and persistence remain controlled by the application.
+- **GMs control canon.** Players may contribute reports, rumors, corrections, and ideas without directly overwriting established world truth.
+- **The world changes through play.** Expeditions should update locations, characters, factions, threats, rumors, and available opportunities.
+- **Accepted changes retain provenance.** Important information should remain linked to its source, author, expedition, and revision history.
+- **Knowledge is permission-aware.** Users should only receive information appropriate to their role and current viewpoint.
+- T**raditional interfaces remain available.** Maps, lists, forms, timelines, and wiki pages should support browsing, review, and correction alongside the conversational interface.
 
 ## Initial MVP
 
