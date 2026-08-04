@@ -28,14 +28,15 @@ Natural language should be a primary interface, allowing players and GMs to sear
 
 The first version should support a basic West Marches play cycle:
 
-1. Players browse the map and available adventure opportunities.
-2. A player creates a call to adventure describing an objective, destination, and proposed date.
-3. Other players join the expedition with eligible characters.
-4. A player or GM submits an expedition report in natural language.
-5. The system extracts proposed campaign updates.
-6. A GM reviews, edits, approves, or rejects those changes.
-7. Approved changes update the living campaign world.
-8. Players see a spoiler-appropriate summary, new discoveries, and newly available opportunities.
+1. A player may select an available character
+2. The character may then browse adventure opportunities reachable from the character's current location
+3. The character creates a call to adventure describing an objective
+4. System validates location, availablility, and date
+5. Participating adventurers answer the call
+6. Other players may have their characters agree to participate
+7. System validets joining character location, avialability, and date
+8. Participating characters undertake the adventure
+9. Resulting report updates the characters and world state
 
 ## Out of Scope for Initial Release
 
