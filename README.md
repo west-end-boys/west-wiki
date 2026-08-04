@@ -12,6 +12,14 @@ Natural language should be a primary interface, allowing players and GMs to sear
 
 **Objective**: Help a player choose an adventure, act through an eligible character, find a valid GM time slot, organize the expedition, and then record the outcome.
 
+## Documentation
+
+See [`doc/REPO-STRUCTURE.md`](doc/REPO-STRUCTURE.md) for the repository layout, the KB/application
+boundary, document ownership, and how this project maps onto the autocode workflow. That document is
+the map -- start there rather than browsing directories.
+
+Development process lives in `.autocode/`. Task status lives in GitHub issues, not in this repo.
+
 ## Core Principles
 
 - **Player agency drives play**. The system should help players decide where to go, why to go there, and who will join them.

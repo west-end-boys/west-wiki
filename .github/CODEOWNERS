@@ -1,0 +1,31 @@
+# Code owners for west-wiki
+#
+# Ownership rules follow doc/REPO-STRUCTURE.md. Later rules win, so the shared
+# contract entries are last -- boundary changes always require both reviewers.
+#
+# @benjaminbradley - KB layer
+# @deastland0423  - application layer
+
+# Default: both review anything not otherwise claimed.
+*                       @benjaminbradley @deastland0423
+
+# Knowledge base layer
+/packages/kb/           @benjaminbradley
+/doc/kb/                @benjaminbradley
+
+# Application layer
+/packages/app/          @deastland0423
+/doc/app/               @deastland0423
+
+# The seam. Both owners required -- do not narrow these.
+/packages/contract/     @benjaminbradley @deastland0423
+/doc/contract/          @benjaminbradley @deastland0423
+
+# Process and planning documents
+/.autocode/             @benjaminbradley @deastland0423
+/.claude/               @benjaminbradley @deastland0423
+/.github/               @benjaminbradley @deastland0423
+/doc/REPO-STRUCTURE.md  @benjaminbradley @deastland0423
+/doc/ARCHITECTURE.md    @benjaminbradley @deastland0423
+/doc/BUILD-PLAN.md      @benjaminbradley @deastland0423
+/doc/adr/               @benjaminbradley @deastland0423
