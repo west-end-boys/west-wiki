@@ -135,3 +135,24 @@ After the session:
 - Public multi-tenant hosting
 - Local or offline LLM support
 - Advanced campaign simulation
+
+
+Alternate, simple MVP
+## Initial MVP
+
+The first version will support the complete scheduling and resolution cycle for a West Marches expedition.
+
+1. Administrators configure the campaign, character limit, regions, and GM regional assignments.
+2. Players create characters, each with a current location and time-bound commitments.
+3. GMs publish the dates, times, and regions in which they are available to run games.
+4. Players browse known adventure opportunities and map locations.
+5. A player selects an eligible character and an adventure opportunity.
+6. The system presents dates when that character is available and an authorized GM can run the adventure.
+7. The player selects a date and publishes a call to adventure on behalf of the character.
+8. Other players join using characters who are available and in the correct location.
+9. After the session, a player or GM submits an expedition report in natural language.
+10. The system proposes structured campaign updates for GM review.
+11. Approved updates change character locations, commitments, discovered locations, adventure opportunities, and campaign knowledge.
+
+The MVP follows the principle that one real-world day equals one campaign-world day. Downtime, travel, recovery, and other commitments therefore affect character availability on corresponding real-world dates.
+
