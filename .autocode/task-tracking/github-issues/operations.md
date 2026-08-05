@@ -44,11 +44,15 @@ gh issue create \
   --body "$(cat <<'EOF'
 **Test:** Validate email format with regex
 **Files:** src/validators/email.ts, tests/validators/email.test.ts
-**Depends:** #41
 **Verify:** unit test
 EOF
 )"
 ```
+
+**Dependencies are wired via blocking relationships, not body text.** After creating all issues for
+a phase, set `blockingIssueId → issueId` pairs using the GraphQL `addBlockedBy` mutation (see
+§Blocking relationships below). Do not use `**Depends:** #N` in the issue body — that text requires
+body parsing and goes stale; the native relationship is queryable and rendered in the GitHub UI.
 
 **Idempotence.** Look the task up by its plan ID before creating:
 
@@ -101,13 +105,19 @@ gh issue list \
 ```
 
 - A task is a candidate only if it is open and carries none of the `status:*` labels.
-- Parse `**Depends:** #41, #42` from the body. A dependency is satisfied when that issue is closed
-  or carries `status:implemented`.
+- Dependencies are satisfied when all issues that block this one are closed. Query via GraphQL (see
+  §Blocking relationships) rather than parsing `**Depends:**` body text — the body field is no
+  longer the source of truth for dependency state.
 - Sort by plan ID, not issue number — issue numbers reflect creation order, which digest does not
   guarantee matches plan order.
 - Before starting, check `doc/LESSONS.md` Deferred Opportunities for items whose domain matches
   this task. Recurrence >= 2 escalates its priority; recurrence >= 3 means resolve the deferred
   learning first.
+
+**GitHub Projects alternative:** If the project uses GitHub Projects V2 status fields (Todo, In
+Progress, Done, etc.) instead of `status:*` labels, filter candidates by Projects status rather
+than labels. Query via the Projects V2 GraphQL API — see §Status via GitHub Projects below. Note:
+`phase-status.sh` does not support this mode and must be updated before autonomous operation.
 
 **Multi-writer caveat:** claim immediately, then re-read (see `task.claim`).
 
@@ -168,8 +178,9 @@ gh issue create \
 **Files:** src/validators/email.ts"
 ```
 
-For deferred reflection items, add the `priority:low` label and reference `doc/LESSONS.md` in the
-body.
+For deferred reflection items, reference `doc/LESSONS.md` in the body. If the project uses GitHub
+Projects Priority field instead of a `priority:low` label, set that field via the Projects V2 API
+(see §Status via GitHub Projects below).
 
 The new issue does **not** get written back into `doc/BUILD-PLAN.md`; the plan is frozen after
 approval.
@@ -289,6 +300,136 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/$number -f state=closed
 those are intentionally not being done autonomously.
 
 If the next phase's milestone does not exist yet, `plan.digest` creates it.
+
+---
+
+---
+
+## Blocking relationships
+
+GitHub Issues supports native blocking/blocked-by relationships via the GraphQL API. Use these
+instead of `**Depends:** #N` body text — the relationship is queryable, rendered in the UI, and
+never goes stale.
+
+**Required token scope:** `project` (in addition to `repo`). Classic PAT; fine-grained PATs may be
+blocked at the org level.
+
+### Setting a relationship
+
+The mutation takes GraphQL node IDs, not issue numbers. Fetch node IDs first:
+
+```bash
+# Get node IDs for a set of issues in one query
+gh api graphql -f query='{
+  repository(owner:"OWNER", name:"REPO") {
+    i1: issue(number:1) { id }
+    i2: issue(number:2) { id }
+  }
+}'
+```
+
+Then wire each pair. `addBlockedBy(issueId: X, blockingIssueId: Y)` means "X is blocked by Y"
+(Y must close before X is unblocked):
+
+```bash
+gh api graphql -f query='mutation {
+  addBlockedBy(input: {
+    issueId: "BLOCKED_NODE_ID",
+    blockingIssueId: "BLOCKING_NODE_ID"
+  }) { clientMutationId }
+}'
+```
+
+To remove a relationship:
+
+```bash
+gh api graphql -f query='mutation {
+  removeBlockedBy(input: {
+    issueId: "BLOCKED_NODE_ID",
+    blockingIssueId: "BLOCKING_NODE_ID"
+  }) { clientMutationId }
+}'
+```
+
+### Checking dependency satisfaction in `task.next()`
+
+A task's dependencies are satisfied when all issues that block it are closed. Query the blocking
+issues for a given task node ID:
+
+```bash
+gh api graphql -f query='{
+  node(id: "ISSUE_NODE_ID") {
+    ... on Issue {
+      number
+      blockedByIssues(first: 20) {
+        nodes { number state }
+      }
+    }
+  }
+}'
+# A task is unblocked when all nodes have state == "CLOSED"
+```
+
+---
+
+## Status via GitHub Projects
+
+If the project uses GitHub Projects V2 status fields (e.g. Todo / In Progress / Done) instead of
+`status:*` labels, the label-based filtering in `task.next()`, `task.claim()`, and
+`task.complete()` must be replaced with Projects V2 GraphQL queries.
+
+**Required scope:** `project`.
+
+### Getting the project and field IDs (one-time setup)
+
+```bash
+# List projects on the org
+gh api graphql -f query='{
+  organization(login:"OWNER") {
+    projectsV2(first:5) {
+      nodes { id title number
+        fields(first:20) {
+          nodes {
+            ... on ProjectV2SingleSelectField { id name options { id name } }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Record the project `id`, the Status field `id`, and each option `id` (Todo, In Progress, Done,
+etc.). Store these as constants — they are stable unless the project is reconfigured.
+
+### Updating an item's status
+
+```bash
+# First, get the project item ID for the issue
+gh api graphql -f query='{
+  repository(owner:"OWNER", name:"REPO") {
+    issue(number: 42) {
+      projectItems(first:5) { nodes { id } }
+    }
+  }
+}'
+
+# Then set the status field
+gh api graphql -f query='mutation {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: "PROJECT_NODE_ID"
+    itemId:    "ITEM_NODE_ID"
+    fieldId:   "STATUS_FIELD_ID"
+    value: { singleSelectOptionId: "IN_PROGRESS_OPTION_ID" }
+  }) { clientMutationId }
+}'
+```
+
+### Harness compatibility
+
+`phase-status.sh` reads `status:*` labels and does not query Projects V2. It is **not compatible**
+with Projects-based status without modification. Until updated, autonomous harness operation is
+unavailable on projects using GitHub Projects for status.
 
 ---
 

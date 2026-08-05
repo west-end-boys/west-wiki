@@ -38,7 +38,9 @@ harness instances.
 - **`gh`** — the GitHub CLI, authenticated: `gh auth login`
 - **`jq`** — used by `phase-status.sh`
 - **Scopes:** `repo` for private repositories, `public_repo` for public ones. Both cover issues,
-  labels and milestones. `gh auth status` shows the current scopes.
+  labels and milestones. Add `project` if using blocking relationships (`addBlockedBy` mutation)
+  or GitHub Projects V2 status/priority fields — both require it. Use a **classic PAT**; fine-grained
+  PATs may be blocked at the org level. `gh auth status` shows the current scopes.
 - The working directory must be inside a clone with a GitHub remote, so `gh` can infer
   `{owner}/{repo}`. Otherwise pass `--repo owner/name` explicitly.
 
