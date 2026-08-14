@@ -2,7 +2,7 @@
 
 Status: Draft  
 Authors: Daniel and collaborators  
-Last updated: August 11, 2026
+Last updated: August 13, 2026
 
 ## Purpose
 
@@ -44,6 +44,14 @@ It focuses on the initial MVP:
 ### Players operate the system; characters act in the world
 
 A logged-in player may control multiple characters. Expedition participation, travel, downtime, purchases, discoveries, and other in-world actions belong to characters rather than directly to players.
+
+### Campaign state changes through actions, not arbitrary edits
+
+Players express what their characters intend to do. Validated domain workflows create commitments, resolve consequences, and update authoritative campaign state when those actions complete.
+
+Players should not normally directly edit authoritative values such as current location, commitments, expedition participation, or lifecycle state. GMs and Administrators may override these values when necessary, with an audit record.
+
+See [ADR 0001](decisions/0001-campaign-state-changes-through-actions.md).
 
 ### One day equals one day
 
@@ -87,12 +95,15 @@ Can read explicitly public campaign content.
 
 Can:
 
-- manage owned characters;
+- manage player-editable data for owned characters;
+- request in-world actions for owned characters, such as travel or downtime;
 - browse permitted campaign knowledge;
 - create calls to adventure through eligible characters;
 - join expeditions with eligible characters;
 - submit reports, corrections, and other contributions;
 - view their characters' locations, commitments, and availability.
+
+Players do not normally directly edit authoritative campaign state such as current location or derived availability.
 
 ### GM
 
@@ -104,7 +115,8 @@ Can:
 - publish availability;
 - run adventures in authorized regions;
 - review and approve proposed campaign changes;
-- manage canonical world state.
+- manage canonical world state;
+- correct or override authoritative character state when necessary.
 
 ### Administrator
 
@@ -115,7 +127,8 @@ Can:
 - configure active-character limits;
 - define or manage regions and safe locations;
 - manage GM regional assignments;
-- configure system integrations and LLM settings.
+- configure system integrations and LLM settings;
+- correct or override authoritative character state when necessary.
 
 Roles may overlap. A user may be both a Player and GM, or both a GM and Administrator.
 
@@ -137,7 +150,8 @@ Possible attributes include:
 - timezone;
 - maximum active characters per player;
 - default session duration;
-- public visibility settings.
+- public visibility settings;
+- gameSystem.
 
 ### CampaignMembership
 
@@ -156,24 +170,37 @@ Possible attributes:
 
 Represents a player character.
 
-Possible attributes:
+Possible core attributes include:
 
 - id;
 - campaignId;
 - ownerUserId;
 - name;
-- status;
+- lifecycleStatus;
+- readinessStatus;
 - currentLocationId;
+- gameSystem;
+- gameData;
 - createdAt;
 - retiredAt.
 
-Possible status values include:
+The character model separates generic campaign state from game-system-specific character data.
+
+Core campaign state should be modeled explicitly because the campaign engine must query and enforce it. Examples include ownership, lifecycle status, current location, and commitments.
+
+Game-system-specific mechanics should be stored in a flexible `gameData` JSON structure. Shadowdark is the first supported game system, but this approach leaves room for other systems such as Call of Cthulhu or Cyberpunk without redesigning the core character model.
+
+Possible lifecycle status values include:
 
 - active;
 - retired;
 - dead;
 - missing;
 - archived.
+
+A character may exist before it is ready for play. Readiness should therefore be treated separately from lifecycle state. A draft or incomplete character can be stored without being eligible for campaign actions.
+
+Player-owned `gameData` is primarily editable by the owning player, subject to game-system validation. Campaign-controlled state is changed through domain workflows or explicit GM/Admin overrides.
 
 ### CharacterCommitment
 
@@ -200,6 +227,8 @@ Examples include:
 - training;
 - crafting;
 - expedition participation.
+
+Commitments should normally be created or changed through validated domain actions rather than arbitrary character field edits.
 
 ### Region
 
@@ -300,7 +329,55 @@ Stores one structured campaign change extracted or suggested by the LLM before G
 
 Represents an approved addition or alteration to campaign knowledge with provenance and visibility metadata.
 
+## Character Data Authority
+
+Character data is divided into two broad categories.
+
+### Player-managed game data
+
+The player who owns a character is the primary editor of that character's game-system-specific data, subject to validation.
+
+Examples may include:
+
+- ability scores;
+- class and level;
+- talents and abilities;
+- spells;
+- equipment;
+- description and notes;
+- other system-specific sheet values.
+
+Some game-system fields may later require stronger controls if campaign workflows also modify them.
+
+### Campaign-controlled state
+
+The following are authoritative campaign state and should not normally be directly editable by players:
+
+- owner;
+- current location;
+- lifecycle/readiness state;
+- commitments;
+- expedition participation;
+- other state used to enforce shared campaign rules.
+
+Players may cause these values to change by initiating valid in-world actions. For example, a player may request travel to another location. The application can translate that request into a travel commitment, apply game-system-specific travel rules, and update the character's location when the action resolves.
+
+GMs and Administrators may directly correct or override these values when necessary. Such overrides should be auditable.
+
+Availability is never directly edited by any actor; it is always derived.
+
 ## Key Workflows
+
+### Character Requests Travel
+
+1. The player chooses an owned character and requests travel to a destination, using either natural language or a conventional UI.
+2. The application verifies that the destination is valid and that the character can begin the travel action.
+3. The game-system layer determines travel duration and any required consequence or encounter rolls.
+4. The application shows the proposed action and consequences for confirmation when appropriate.
+5. The application creates a blocking travel commitment.
+6. While the commitment is active, the character is unavailable for conflicting expeditions.
+7. When travel resolves successfully, the application updates the authoritative current location.
+8. The action and resulting state change remain auditable.
 
 ### GM Publishes Availability
 
@@ -350,7 +427,7 @@ The call records both the human player who created it and the character who issu
 
 A character is eligible for an expedition when all required conditions are satisfied:
 
-- the character is active;
+- the character is active and ready for play;
 - the character is at the required departure location or otherwise geographically eligible;
 - the character has no overlapping blocking commitment;
 - the character is not committed to another expedition at the same time;
@@ -381,6 +458,7 @@ Possible intent categories include:
 - CREATE_DRAFT;
 - PROPOSE_CHANGE;
 - SCHEDULE_ACTION;
+- REQUEST_TRAVEL;
 - CREATE_CALL_TO_ADVENTURE;
 - JOIN_EXPEDITION;
 - SUBMIT_REPORT;
@@ -527,6 +605,7 @@ At minimum, important changes should track:
 - Are recurring GM availability windows part of the MVP?
 - How interactive does the map need to be for the initial release?
 - When should travel feasibility become more sophisticated than a required departure location?
+- Which game-system fields, if any, should be promoted from `gameData` into stronger campaign-controlled state?
 
 ## Milestone Mapping
 
