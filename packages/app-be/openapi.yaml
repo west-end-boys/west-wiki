@@ -2,16 +2,16 @@ openapi: 3.1.0
 info:
   title: West Wiki API
   version: 0.1.0
-  description: Initial campaign and character-management API slice.
+  description: Initial campaign and character-management API slice backed by the event-sourced KB.
 servers:
   - url: /
 paths:
   /campaign:
     get:
-      summary: Get the current campaign configuration
+      summary: Get the current campaign projection
       responses:
         '200':
-          description: Campaign configuration
+          description: Current viewer-safe campaign projection
           content:
             application/json:
               schema:
@@ -20,10 +20,10 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
   /characters:
     get:
-      summary: List characters owned by the current player
+      summary: List current character projections owned by the current player
       responses:
         '200':
-          description: Character summaries
+          description: Character projections
           content:
             application/json:
               schema:
@@ -34,6 +34,7 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
     post:
       summary: Create a draft character
+      description: Validates the command and records the resulting accepted event(s) in the KB.
       requestBody:
         required: true
         content:
@@ -42,11 +43,11 @@ paths:
               $ref: '#/components/schemas/CreateCharacterRequest'
       responses:
         '201':
-          description: Draft character created
+          description: Draft character created; response is the resulting current projection
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CharacterDetail'
+                $ref: '#/components/schemas/CharacterCommandResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -55,10 +56,10 @@ paths:
     parameters:
       - $ref: '#/components/parameters/CharacterId'
     get:
-      summary: Get a character
+      summary: Get the current character projection
       responses:
         '200':
-          description: Character detail
+          description: Current viewer-safe character projection
           content:
             application/json:
               schema:
@@ -67,22 +68,25 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
-    patch:
-      summary: Update player-managed character data
-      description: Does not permit direct edits to authoritative campaign state such as lifecycle status or current location.
+  /characters/{characterId}/edit:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    post:
+      summary: Propose player-managed character edits
+      description: Character edits are recorded as accepted correction/fact events; existing KB events are never mutated in place.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCharacterRequest'
+              $ref: '#/components/schemas/EditCharacterRequest'
       responses:
         '200':
-          description: Updated character
+          description: Edit accepted; response is the resulting current projection
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CharacterDetail'
+                $ref: '#/components/schemas/CharacterCommandResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -91,11 +95,14 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/DomainValidation'
   /characters/{characterId}/activate:
     parameters:
       - $ref: '#/components/parameters/CharacterId'
     post:
       summary: Activate a draft character
+      description: Validates activation against current projections and records the resulting accepted event(s) in the KB.
       requestBody:
         required: true
         content:
@@ -104,11 +111,11 @@ paths:
               $ref: '#/components/schemas/ActivateCharacterRequest'
       responses:
         '200':
-          description: Character activated
+          description: Character activated; response is the resulting current projection
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActivateCharacterResult'
+                $ref: '#/components/schemas/CharacterCommandResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -116,22 +123,15 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Current campaign or character state conflicts with activation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/Conflict'
         '422':
-          description: Character or location fails domain validation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/DomainValidation'
   /characters/{characterId}/retire:
     parameters:
       - $ref: '#/components/parameters/CharacterId'
     post:
       summary: Retire a character
+      description: Validates retirement and records the resulting accepted event(s) in the KB.
       requestBody:
         required: true
         content:
@@ -140,11 +140,11 @@ paths:
               $ref: '#/components/schemas/RetireCharacterRequest'
       responses:
         '200':
-          description: Character retired
+          description: Character retired; response is the resulting current projection
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RetireCharacterResult'
+                $ref: '#/components/schemas/CharacterCommandResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -152,17 +152,9 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Current character state conflicts with retirement
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/Conflict'
         '422':
-          description: Retirement request fails domain validation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/DomainValidation'
   /characters/{characterId}/availability:
     parameters:
       - $ref: '#/components/parameters/CharacterId'
@@ -173,10 +165,10 @@ paths:
           type: string
           format: date
     get:
-      summary: Get character availability for a date
+      summary: Get derived character availability for a date
       responses:
         '200':
-          description: Derived availability
+          description: Derived availability from current projected state
           content:
             application/json:
               schema:
@@ -187,17 +179,17 @@ paths:
           $ref: '#/components/responses/NotFound'
   /locations:
     get:
-      summary: List locations visible to the current caller
+      summary: List current location projections visible to the caller
       parameters:
         - name: startingLocation
           in: query
           required: false
           schema:
             type: boolean
-          description: When true, return only locations that allow character activation.
+          description: When true, return only locations whose current projection allows character activation.
       responses:
         '200':
-          description: Location summaries
+          description: Viewer-safe location projections
           content:
             application/json:
               schema:
@@ -239,26 +231,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Current projected campaign state conflicts with the requested command
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    DomainValidation:
+      description: Request is structurally valid but fails domain validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
   schemas:
     CampaignView:
       type: object
       required: [id, name, gameSystem, timezone, characterRules, downtimeRules]
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        gameSystem:
-          type: string
-        timezone:
-          type: string
+        id: { type: string }
+        name: { type: string }
+        gameSystem: { type: string }
+        timezone: { type: string }
         characterRules:
           type: object
           required: [maxRosterSize, activationPolicy]
           properties:
-            maxRosterSize:
-              type: integer
-              minimum: 0
+            maxRosterSize: { type: integer, minimum: 0 }
             activationPolicy:
               type: string
               enum: [AUTOMATIC, GM_APPROVAL]
@@ -266,54 +264,39 @@ components:
           type: object
           required: [maxActivitiesBetweenExpeditions]
           properties:
-            maxActivitiesBetweenExpeditions:
-              type: integer
-              minimum: 0
+            maxActivitiesBetweenExpeditions: { type: integer, minimum: 0 }
     LocationSummary:
       type: object
       required: [id, name, allowsCharacterActivation]
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        allowsCharacterActivation:
-          type: boolean
+        id: { type: string }
+        name: { type: string }
+        allowsCharacterActivation: { type: boolean }
     CharacterSummary:
       type: object
       required: [id, name, lifecycleStatus, countsAgainstRosterLimit]
       properties:
-        id:
-          type: string
-        name:
-          type: string
+        id: { type: string }
+        name: { type: string }
         lifecycleStatus:
           $ref: '#/components/schemas/CharacterLifecycleStatus'
         currentLocation:
           $ref: '#/components/schemas/LocationSummary'
-        countsAgainstRosterLimit:
-          type: boolean
+        countsAgainstRosterLimit: { type: boolean }
     CharacterDetail:
       allOf:
         - $ref: '#/components/schemas/CharacterSummary'
         - type: object
           required: [campaignId, ownerUserId, gameSystem, gameData, createdAt]
           properties:
-            campaignId:
-              type: string
-            ownerUserId:
-              type: string
-            gameSystem:
-              type: string
+            campaignId: { type: string }
+            ownerUserId: { type: string }
+            gameSystem: { type: string }
             gameData:
               type: object
               additionalProperties: true
-            createdAt:
-              type: string
-              format: date-time
-            retiredAt:
-              type: string
-              format: date-time
+            createdAt: { type: string, format: date-time }
+            retiredAt: { type: string, format: date-time }
     CharacterLifecycleStatus:
       type: string
       enum: [DRAFT, ACTIVE, MISSING, RETIRED, DEAD, ARCHIVED]
@@ -321,18 +304,14 @@ components:
       type: object
       required: [name]
       properties:
-        name:
-          type: string
-          minLength: 1
+        name: { type: string, minLength: 1 }
         gameData:
           type: object
           additionalProperties: true
-    UpdateCharacterRequest:
+    EditCharacterRequest:
       type: object
       properties:
-        name:
-          type: string
-          minLength: 1
+        name: { type: string, minLength: 1 }
         gameData:
           type: object
           additionalProperties: true
@@ -341,39 +320,29 @@ components:
       type: object
       required: [startingLocationId]
       properties:
-        startingLocationId:
-          type: string
-    ActivateCharacterResult:
-      type: object
-      required: [character]
-      properties:
-        character:
-          $ref: '#/components/schemas/CharacterDetail'
+        startingLocationId: { type: string }
     RetireCharacterRequest:
       type: object
       required: [locationId]
       properties:
-        locationId:
-          type: string
-        narrative:
-          type: string
-    RetireCharacterResult:
+        locationId: { type: string }
+        narrative: { type: string }
+    CharacterCommandResult:
       type: object
       required: [character]
       properties:
         character:
           $ref: '#/components/schemas/CharacterDetail'
+        eventIds:
+          type: array
+          items: { type: string }
     CharacterAvailability:
       type: object
       required: [characterId, date, available, reasons]
       properties:
-        characterId:
-          type: string
-        date:
-          type: string
-          format: date
-        available:
-          type: boolean
+        characterId: { type: string }
+        date: { type: string, format: date }
+        available: { type: boolean }
         reasons:
           type: array
           items:
@@ -383,25 +352,20 @@ components:
         - type: object
           required: [code]
           properties:
-            code:
-              const: AVAILABLE
+            code: { const: AVAILABLE }
         - type: object
           required: [code]
           properties:
-            code:
-              const: NOT_ACTIVE
+            code: { const: NOT_ACTIVE }
         - type: object
           required: [code]
           properties:
-            code:
-              const: MISSING
+            code: { const: MISSING }
         - type: object
           required: [code, commitmentId]
           properties:
-            code:
-              const: BLOCKING_COMMITMENT
-            commitmentId:
-              type: string
+            code: { const: BLOCKING_COMMITMENT }
+            commitmentId: { type: string }
     ApiError:
       type: object
       required: [code, message]
@@ -420,9 +384,10 @@ components:
             - COMMITMENT_CONFLICT
             - DOWNTIME_LIMIT_REACHED
             - DOMAIN_VALIDATION_FAILED
+            - KB_WRITE_REJECTED
+            - KB_UNAVAILABLE
             - INTERNAL_ERROR
-        message:
-          type: string
+        message: { type: string }
         details:
           type: object
           additionalProperties: true
