@@ -1,7 +1,7 @@
 # ADR 001: Event-Sourced Fact Store
 
 **Scope:** System-wide (KB layer internals; contract surface; application editing model)
-**Status:** Proposed
+**Status:** Accepted
 **Authors:** @benjaminbradley
 **Reviewers:** @deastland0423
 **Date:** 2026-08-05
