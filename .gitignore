@@ -1,6 +1,11 @@
 # OS
 .DS_Store
 
+# Node
+node_modules/
+dist/
+coverage/
+
 # Autocode local files
 HANDOFF.md
 PROGRESS.md

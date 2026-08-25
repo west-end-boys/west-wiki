@@ -7,7 +7,7 @@ import type {
   LocationId,
   LocationSummary,
   UserId,
-} from "../index";
+} from "../index.js";
 
 export type ViewerRole = "PLAYER" | "GM" | "ADMINISTRATOR";
 

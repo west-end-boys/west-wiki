@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from "../index";
+import type { ApiErrorCode } from "../index.js";
 
 export class DomainError extends Error {
   constructor(

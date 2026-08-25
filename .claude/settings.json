@@ -48,7 +48,21 @@
       "Bash(tree:*)",
       "Bash(touch:*)",
       "Bash(tree:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm install *)",
+      "Bash(npm audit *)",
+      "Bash(npm run *)",
+      "Bash(npx vitest *)",
+      "Bash(npm view *)",
+      "Bash(chmod +x .githooks/pre-commit)",
+      "Bash(git add *)",
+      "Bash(.githooks/pre-commit)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(brew --version)",
+      "Bash(brew install *)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git reset *)"
     ],
     "deny": [
       "Read(./.env)",

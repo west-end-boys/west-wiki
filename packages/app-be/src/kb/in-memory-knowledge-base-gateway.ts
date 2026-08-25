@@ -7,12 +7,12 @@ import type {
   EventId,
   LocationSummary,
   UserId,
-} from "../index";
+} from "../index.js";
 import type {
   ActivateCharacterEventInput,
   KnowledgeBaseGateway,
   ViewerContext,
-} from "./knowledge-base-gateway";
+} from "./knowledge-base-gateway.js";
 
 export interface InMemoryKnowledgeBaseSeed {
   campaign: CampaignView;

@@ -2,12 +2,12 @@ import type {
   ActivateCharacterRequest,
   CharacterCommandResult,
   CharacterId,
-} from "../index";
-import { DomainError } from "../domain/domain-error";
+} from "../index.js";
+import { DomainError } from "../domain/domain-error.js";
 import type {
   KnowledgeBaseGateway,
   ViewerContext,
-} from "../kb/knowledge-base-gateway";
+} from "../kb/knowledge-base-gateway.js";
 
 export class CharacterService {
   constructor(private readonly kb: KnowledgeBaseGateway) {}

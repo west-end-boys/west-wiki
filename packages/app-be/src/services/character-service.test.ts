@@ -1,15 +1,14 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, expect, it } from "vitest";
 
 import type {
   CampaignView,
   CharacterDetail,
   LocationSummary,
-} from "../index";
-import { DomainError } from "../domain/domain-error";
-import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway";
-import type { ViewerContext } from "../kb/knowledge-base-gateway";
-import { CharacterService } from "./character-service";
+} from "../index.js";
+import { DomainError } from "../domain/domain-error.js";
+import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
+import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import { CharacterService } from "./character-service.js";
 
 const campaign: CampaignView = {
   id: "western-reaches",
@@ -55,55 +54,54 @@ function character(
   };
 }
 
-test("activates an eligible draft character and records the KB write", async () => {
-  const kb = new InMemoryKnowledgeBaseGateway({
-    campaign,
-    characters: [character("tordek", "DRAFT")],
-    startingLocations: [marinsHold],
-  });
-  const service = new CharacterService(kb);
+describe("CharacterService", () => {
+  it("activates an eligible draft character and records the KB write", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "DRAFT")],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
 
-  const result = await service.activateCharacter(
-    "tordek",
-    { startingLocationId: marinsHold.id },
-    context,
-  );
-
-  assert.equal(result.character.lifecycleStatus, "ACTIVE");
-  assert.equal(result.character.currentLocation?.id, marinsHold.id);
-  assert.equal(result.character.countsAgainstRosterLimit, true);
-  assert.equal(result.eventIds?.length, 1);
-  assert.deepEqual(kb.activationWrites, [
-    { characterId: "tordek", startingLocationId: marinsHold.id },
-  ]);
-});
-
-test("rejects activation when the roster is full without writing to the KB", async () => {
-  const kb = new InMemoryKnowledgeBaseGateway({
-    campaign,
-    characters: [
-      character("tordek", "DRAFT"),
-      character("brenna", "ACTIVE"),
-      character("osric", "ACTIVE"),
-      character("kell", "MISSING"),
-    ],
-    startingLocations: [marinsHold],
-  });
-  const service = new CharacterService(kb);
-
-  await assert.rejects(
-    service.activateCharacter(
+    const result = await service.activateCharacter(
       "tordek",
       { startingLocationId: marinsHold.id },
       context,
-    ),
-    (error: unknown) => {
-      assert.ok(error instanceof DomainError);
-      assert.equal(error.code, "ROSTER_LIMIT_REACHED");
-      assert.deepEqual(error.details, { current: 3, maximum: 3 });
-      return true;
-    },
-  );
+    );
 
-  assert.equal(kb.activationWrites.length, 0);
+    expect(result.character.lifecycleStatus).toBe("ACTIVE");
+    expect(result.character.currentLocation?.id).toBe(marinsHold.id);
+    expect(result.character.countsAgainstRosterLimit).toBe(true);
+    expect(result.eventIds).toHaveLength(1);
+    expect(kb.activationWrites).toEqual([
+      { characterId: "tordek", startingLocationId: marinsHold.id },
+    ]);
+  });
+
+  it("rejects activation when the roster is full without writing to the KB", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [
+        character("tordek", "DRAFT"),
+        character("brenna", "ACTIVE"),
+        character("osric", "ACTIVE"),
+        character("kell", "MISSING"),
+      ],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "tordek",
+      { startingLocationId: marinsHold.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({
+      code: "ROSTER_LIMIT_REACHED",
+      details: { current: 3, maximum: 3 },
+    });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
 });

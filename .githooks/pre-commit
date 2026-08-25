@@ -1,31 +1,14 @@
 #!/usr/bin/env bash
-# PRE-COMMIT HOOK — NOT CONFIGURED FOR THIS PROJECT
-#
-# This placeholder was installed by autocode setup.sh.
-# Replace the body of this file with project-specific checks
-# before making your initial commit.
-#
-# This file: /Users/benjamin/projects/west-marches-app/west-wiki/.git/hooks/pre-commit
-#
-# Typical checks to add:
-#   Python:     ruff check . && ruff format --check . && pytest
-#   TypeScript: npx eslint . && npx tsc --noEmit && npm test
-#   Secrets:    grep -rI 'api_key\|password\|secret' --include='*.py' .
-#
-# See: .autocode/core/workflow/bootstrap.md  (Step 5: Configure Pre-commit Hook)
-# Remove the 'exit 1' once this file is configured.
+set -euo pipefail
 
 # Markdown-only bypass: if every staged file is a .md/.markdown file, skip
 # checks entirely and let the commit through. Docs-only commits shouldn't be
-# blocked by a placeholder waiting on real code checks.
+# blocked by code checks.
 staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 if [ -n "$staged_files" ] && ! echo "$staged_files" | grep -qvE '\.(md|markdown)$'; then
     exit 0
 fi
 
-echo ""
-echo "⚠️  PRE-COMMIT HOOK NOT CONFIGURED FOR THIS PROJECT"
-echo "   Edit: /Users/benjamin/projects/west-marches-app/west-wiki/.git/hooks/pre-commit"
-echo "   See: .autocode/core/workflow/bootstrap.md"
-echo ""
-exit 1
+npm run lint
+npm run typecheck
+npm test
