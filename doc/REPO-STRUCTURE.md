@@ -27,28 +27,36 @@ Revisit if it happens twice.
 ```
 packages/
   contract/        Shared API types + fixtures. The seam. Jointly owned.
+                   - openapi.yaml       OpenAPI schema for the KB/app-be interface
+                   - src/index.ts       TypeScript type definitions
   kb/              Knowledge base layer. Facts, events, provenance, redaction.
-  app/             Application layer. UI, use cases, scheduling, expeditions.
+  app-be/          Application backend. API routes, use cases, scheduling logic.
+  app-fe/          Application frontend. UI, client-side routing, expedition views.
 
 doc/
   REPO-STRUCTURE.md      This file. Layout, ownership, document map.
   DEVELOPMENT.md         Dev environment setup, git hooks, local workflow.
   BUILD-PLAN.md          Phase plan. Frozen after approval, links to milestone.
   LESSONS.md             Reflection triage.
-  ARCHITECTURE.md        System level: the two apps, the boundary, deployment.
+  ARCHITECTURE.md        System level: the three layers, boundaries, deployment.
   adr/                   System + contract decisions.
   contract/
-    API.md               Normative prose for the boundary. Points at packages/contract.
+    API.md               Normative prose for the KB/app-be boundary. Points at packages/contract.
   kb/
     REQUIREMENTS.md
     ARCHITECTURE.md
     SPECS.md             KB internals: event log format, storage schema.
     adr/                 KB-scoped decisions.
-  app/
+  app-be/
     REQUIREMENTS.md
     ARCHITECTURE.md
-    SPECS.md             App internals: view models, routing, session flows.
-    adr/                 App-scoped decisions.
+    SPECS.md             App backend internals: API routes, data flow, session management.
+    adr/                 Backend-scoped decisions.
+  app-fe/
+    REQUIREMENTS.md
+    ARCHITECTURE.md
+    SPECS.md             App frontend internals: view models, routing, UI interaction.
+    adr/                 Frontend-scoped decisions.
 
 .github/
   CODEOWNERS
@@ -109,7 +117,8 @@ determines whose review is required.
 | `doc/ARCHITECTURE.md` | joint | rare |
 | `doc/contract/**`, `packages/contract/**` | **both** | per boundary change |
 | `doc/kb/**`, `packages/kb/**` | benjaminbradley | per task |
-| `doc/app/**`, `packages/app/**` | deastland0423 | per task |
+| `doc/app-be/**`, `packages/app-be/**` | deastland0423 | per task |
+| `doc/app-fe/**`, `packages/app-fe/**` | deastland0423 | per task |
 | `doc/BUILD-PLAN.md` | joint | per phase |
 | `doc/LESSONS.md` | either | as reflected |
 
@@ -118,16 +127,17 @@ determines whose review is required.
 ## Mapping onto autocode
 
 autocode's core workflow names `REQUIREMENTS.md`, `ARCHITECTURE.md` and `SPECS.md` without a path,
-assuming one application per repo. Two resolutions apply here:
+assuming one application per repo. Three resolutions apply here:
 
-**1. Per-app documents resolve by the task's area.** A task labelled `area:kb` reads `doc/kb/*`; a
-task labelled `area:app` reads `doc/app/*`. A task labelled `area:contract` reads
-`doc/contract/API.md` and both apps' `SPECS.md`. When area is ambiguous, ask rather than guess.
+**1. Per-layer documents resolve by the task's area.** A task labelled `area:kb` reads `doc/kb/*`; a
+task labelled `area:app-be` reads `doc/app-be/*`; a task labelled `area:app-fe` reads `doc/app-fe/*`.
+A task labelled `area:contract` reads `doc/contract/API.md` and both app layers' `SPECS.md`. When
+area is ambiguous, ask rather than guess.
 
 **2. `doc/BUILD-PLAN.md` stays singular.** The `github-issues` adapter reads that exact path, and
-one plan per repo keeps phases as vertical slices spanning both apps -- which is what we want, since
-a phase that touches only one side cannot be demonstrated end to end. Tasks carry an `area:*` label
-to route them.
+one plan per repo keeps phases as vertical slices spanning all three layers -- which is what we want,
+since a phase that touches only one side cannot be demonstrated end to end. Tasks carry an `area:*`
+label to route them.
 
 Everything else follows `.autocode/` unmodified. Task status lives in GitHub issues; see
 `.autocode/core/workflow/task-tracking.md` for the contract and
