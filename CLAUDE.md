@@ -12,7 +12,9 @@ campaign. Two layers, one monorepo:
 
 - **`packages/kb/`** — Knowledge base: event-sourced fact store, provenance, redaction.
   Owner: @benjaminbradley
-- **`packages/app/`** — Application: scheduling, expeditions, player-facing UI.
+- **`packages/app-be/`** — Application back-end: implements business logic, coordinates with KB.
+  Owner: @deastland0423
+- **`packages/app-fe/`** — Application front-end: scheduling, expeditions, player-facing UI.
   Owner: @deastland0423
 - **`packages/contract/`** — Shared TypeScript types + fixtures. The seam. Both owners required.
 
