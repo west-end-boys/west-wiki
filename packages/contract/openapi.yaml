@@ -1,0 +1,428 @@
+openapi: 3.1.0
+info:
+  title: West Wiki API
+  version: 0.1.0
+  description: Initial campaign and character-management API slice.
+servers:
+  - url: /
+paths:
+  /campaign:
+    get:
+      summary: Get the current campaign configuration
+      responses:
+        '200':
+          description: Campaign configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignView'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /characters:
+    get:
+      summary: List characters owned by the current player
+      responses:
+        '200':
+          description: Character summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CharacterSummary'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      summary: Create a draft character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCharacterRequest'
+      responses:
+        '201':
+          description: Draft character created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /characters/{characterId}:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    get:
+      summary: Get a character
+      responses:
+        '200':
+          description: Character detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterDetail'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update player-managed character data
+      description: Does not permit direct edits to authoritative campaign state such as lifecycle status or current location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCharacterRequest'
+      responses:
+        '200':
+          description: Updated character
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /characters/{characterId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    post:
+      summary: Activate a draft character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateCharacterRequest'
+      responses:
+        '200':
+          description: Character activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivateCharacterResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Current campaign or character state conflicts with activation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Character or location fails domain validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /characters/{characterId}/retire:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    post:
+      summary: Retire a character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetireCharacterRequest'
+      responses:
+        '200':
+          description: Character retired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetireCharacterResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Current character state conflicts with retirement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Retirement request fails domain validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /characters/{characterId}/availability:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+    get:
+      summary: Get character availability for a date
+      responses:
+        '200':
+          description: Derived availability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterAvailability'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /locations:
+    get:
+      summary: List locations visible to the current caller
+      parameters:
+        - name: startingLocation
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: When true, return only locations that allow character activation.
+      responses:
+        '200':
+          description: Location summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSummary'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+components:
+  parameters:
+    CharacterId:
+      name: characterId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthenticated:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Caller is not authorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Resource not found or not visible to caller
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    CampaignView:
+      type: object
+      required: [id, name, gameSystem, timezone, characterRules, downtimeRules]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        gameSystem:
+          type: string
+        timezone:
+          type: string
+        characterRules:
+          type: object
+          required: [maxRosterSize, activationPolicy]
+          properties:
+            maxRosterSize:
+              type: integer
+              minimum: 0
+            activationPolicy:
+              type: string
+              enum: [AUTOMATIC, GM_APPROVAL]
+        downtimeRules:
+          type: object
+          required: [maxActivitiesBetweenExpeditions]
+          properties:
+            maxActivitiesBetweenExpeditions:
+              type: integer
+              minimum: 0
+    LocationSummary:
+      type: object
+      required: [id, name, allowsCharacterActivation]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        allowsCharacterActivation:
+          type: boolean
+    CharacterSummary:
+      type: object
+      required: [id, name, lifecycleStatus, countsAgainstRosterLimit]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        lifecycleStatus:
+          $ref: '#/components/schemas/CharacterLifecycleStatus'
+        currentLocation:
+          $ref: '#/components/schemas/LocationSummary'
+        countsAgainstRosterLimit:
+          type: boolean
+    CharacterDetail:
+      allOf:
+        - $ref: '#/components/schemas/CharacterSummary'
+        - type: object
+          required: [campaignId, ownerUserId, gameSystem, gameData, createdAt]
+          properties:
+            campaignId:
+              type: string
+            ownerUserId:
+              type: string
+            gameSystem:
+              type: string
+            gameData:
+              type: object
+              additionalProperties: true
+            createdAt:
+              type: string
+              format: date-time
+            retiredAt:
+              type: string
+              format: date-time
+    CharacterLifecycleStatus:
+      type: string
+      enum: [DRAFT, ACTIVE, MISSING, RETIRED, DEAD, ARCHIVED]
+    CreateCharacterRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        gameData:
+          type: object
+          additionalProperties: true
+    UpdateCharacterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        gameData:
+          type: object
+          additionalProperties: true
+      minProperties: 1
+    ActivateCharacterRequest:
+      type: object
+      required: [startingLocationId]
+      properties:
+        startingLocationId:
+          type: string
+    ActivateCharacterResult:
+      type: object
+      required: [character]
+      properties:
+        character:
+          $ref: '#/components/schemas/CharacterDetail'
+    RetireCharacterRequest:
+      type: object
+      required: [locationId]
+      properties:
+        locationId:
+          type: string
+        narrative:
+          type: string
+    RetireCharacterResult:
+      type: object
+      required: [character]
+      properties:
+        character:
+          $ref: '#/components/schemas/CharacterDetail'
+    CharacterAvailability:
+      type: object
+      required: [characterId, date, available, reasons]
+      properties:
+        characterId:
+          type: string
+        date:
+          type: string
+          format: date
+        available:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilityReason'
+    AvailabilityReason:
+      oneOf:
+        - type: object
+          required: [code]
+          properties:
+            code:
+              const: AVAILABLE
+        - type: object
+          required: [code]
+          properties:
+            code:
+              const: NOT_ACTIVE
+        - type: object
+          required: [code]
+          properties:
+            code:
+              const: MISSING
+        - type: object
+          required: [code, commitmentId]
+          properties:
+            code:
+              const: BLOCKING_COMMITMENT
+            commitmentId:
+              type: string
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_REQUEST
+            - UNAUTHENTICATED
+            - FORBIDDEN
+            - NOT_FOUND
+            - ROSTER_LIMIT_REACHED
+            - INVALID_STARTING_LOCATION
+            - CHARACTER_NOT_DRAFT
+            - CHARACTER_NOT_ELIGIBLE
+            - COMMITMENT_CONFLICT
+            - DOWNTIME_LIMIT_REACHED
+            - DOMAIN_VALIDATION_FAILED
+            - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
