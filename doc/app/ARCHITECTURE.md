@@ -5,7 +5,11 @@ Last updated: August 24, 2026
 
 ## Scope
 
-This document describes the architecture of the West Wiki application layer. The application owns UI, use cases, scheduling, expeditions, character workflows, authentication/permissions orchestration, and LLM-assisted interaction. It consumes campaign knowledge through the shared KB/app contract rather than reaching into KB internals.
+This document describes the West Wiki application layer. The application owns UI, use cases, domain validation, scheduling, expeditions, authentication/permissions orchestration, and LLM-assisted interaction. It consumes and changes campaign state only through the KB boundary.
+
+The KB event log is the authoritative source of truth for campaign state. The application does not maintain a second authoritative mutable store for characters, locations, campaign state, expeditions, or other campaign assets.
+
+See `doc/adr/001-event-sourced-fact-store.md`.
 
 System-wide boundaries and deployment concerns belong in `doc/ARCHITECTURE.md`; KB internals belong in `doc/kb/ARCHITECTURE.md`.
 
@@ -16,134 +20,204 @@ The application layer is responsible for:
 - authenticated user and campaign context;
 - role/capability checks;
 - character lifecycle workflows;
-- character commitments and derived availability;
-- GM availability and regional authorization;
+- commitment and availability validation;
+- GM availability and regional authorization workflows;
 - adventure-opportunity browsing and scheduling;
-- Calls to Adventure and expedition participation;
+- Calls to Adventure and expedition participation workflows;
 - post-session report intake and moderation workflows;
 - natural-language intent interpretation and domain-action orchestration;
-- conventional UI for all important operations;
-- audit metadata for application-owned state changes.
+- conventional UI for important operations;
+- constructing structured KB event proposals/writes after successful domain validation.
 
-The application layer is not the authoritative store for KB facts, provenance, or redaction rules across the KB boundary.
+The application layer is not the authoritative store for campaign state, facts, provenance, history, or redaction.
 
 ## High-Level Components
 
 ```text
-Web Client
-    |
-Application API
-    |
-    +-- Authentication & Campaign Membership
-    +-- Character Service
-    +-- Commitment / Availability Service
-    +-- Scheduling / Expedition Service
-    +-- GM Availability Service
-    +-- LLM Orchestration Service
-    +-- Report / Moderation Workflow
-    +-- Audit Service
-    |
-    +-- Shared Contract --> KB Layer
-    |
-Application Relational Database
-    |
-LLM Provider
+app-fe
+   |
+   v
+app-be HTTP API
+   |
+   +-- Authentication & Campaign Membership
+   +-- Character Domain Service
+   +-- Commitment / Availability Service
+   +-- Scheduling / Expedition Service
+   +-- GM Availability Service
+   +-- LLM Orchestration Service
+   +-- Report / Moderation Workflow
+   |
+   v
+KB Contract
+   |
+   +-- projection reads
+   +-- event proposals / accepted writes
+   |
+   v
+Event-Sourced KB
 ```
+
+The KB may internally use materialized projections or caches for performance. Those are KB implementation details and do not change the application contract.
+
+## Read Model
+
+The application reads current state through viewer-safe KB projections.
+
+Typical flow:
+
+```text
+HTTP GET
+  -> authenticate caller
+  -> resolve viewer/campaign context
+  -> request projection from KB
+  -> KB applies redaction
+  -> app-be maps projection to response DTO
+```
+
+Examples of projected read models include Campaign, Character, Location, Opportunity, Expedition, and availability-related state.
+
+The application should not reconstruct domain state by reading raw KB events unless a dedicated history/provenance use case explicitly requires event-level data.
+
+## Write Model
+
+Application writes are domain commands, not row mutations.
+
+Typical flow:
+
+```text
+HTTP command
+  -> authenticate / authorize
+  -> fetch current projections needed for validation
+  -> validate domain rules
+  -> create structured event proposal(s)
+  -> submit to KB
+  -> KB appends accepted event(s)
+  -> return resulting current projection
+```
+
+Examples:
+
+- create character -> `CHARACTER_CREATED` event(s);
+- edit character -> correction/fact event(s);
+- activate character -> `CHARACTER_ACTIVATED` event(s);
+- retire character -> retirement event(s);
+- travel -> commitment/travel event(s), followed by location-changing event(s) when resolved;
+- join expedition -> participation/commitment event(s).
+
+Corrections and retractions never update or delete prior KB events.
 
 ## Domain Services
 
-### Character Service
+### Character Domain Service
 
-Owns validated lifecycle transitions and character core campaign state. Direct player edits are limited to player-managed character data; authoritative state transitions occur through domain actions.
+Validates character-related commands against current projections and campaign rules. It does not own a mutable Character record.
+
+Responsibilities include:
+
+- draft creation validation;
+- player-managed character edit validation;
+- roster-limit validation;
+- activation eligibility;
+- lifecycle transition validation;
+- retirement workflow validation;
+- construction of structured KB event proposals.
 
 ### Commitment and Availability Service
 
-Owns blocking commitments, downtime scheduling, automatic date-based transitions, conflict detection, and availability calculations for a requested date/date range.
+Evaluates projected commitments and campaign timing rules to determine conflicts and availability.
 
-Availability is derived, never persisted as a user-controlled field.
+Responsibilities include:
+
+- downtime scheduling validation;
+- no-overlap enforcement;
+- downtime allowance rules;
+- automatic calendar-driven transition semantics;
+- date-specific availability calculations.
+
+If commitment transitions are represented as new events, the service coordinates the domain decision while the KB remains authoritative for the resulting history/state.
 
 ### Scheduling and Expedition Service
 
-Matches:
+Matches eligible characters, adventure opportunities, required departure locations, GM availability windows, GM authorization, and party constraints.
 
-- eligible characters;
-- adventure opportunities;
-- required departure locations;
-- GM availability windows;
-- GM regional authorization;
-- expedition party constraints.
-
-It creates Calls to Adventure, participant records, and expedition commitments through validated workflows.
+Successful scheduling commands result in appropriate expedition/participation/commitment events in the KB rather than application-owned mutable records.
 
 ### GM Availability Service
 
-Stores GM availability windows and any app-owned regional/session constraints, then exposes valid scheduling capacity to the expedition service.
+Validates GM availability commands and exposes projected valid scheduling capacity. The authoritative history/state of availability belongs in the KB unless a later ADR explicitly creates an app-owned operational exception.
 
 ### LLM Orchestration Service
 
-The LLM is an interpreter, not a privileged database agent. The orchestration flow is:
+The LLM is an interpreter, not a privileged data agent.
 
 ```text
 Natural-language input
     -> intent/entity/date interpretation
     -> structured proposed domain operation
     -> permission checks
-    -> entity resolution
+    -> projection reads
     -> domain validation
     -> confirmation when consequential
-    -> application operation
+    -> same command path used by conventional UI
 ```
 
-The LLM never receives unrestricted database-write access.
+The LLM never receives unrestricted KB write access.
 
 ### Report and Moderation Workflow
 
-Stores the original report, requests structured proposed changes from the LLM, validates those proposals, presents them to a GM, and sends accepted canonical updates through the shared KB/app contract.
+Retains/submits reports according to the KB contract, requests structured proposed facts/events from the LLM, validates them, presents them for GM review, and submits accepted proposals to the KB.
 
 ## Data Ownership
 
-Application-owned state includes operational records such as:
+### KB-owned authoritative state
 
-- campaign membership and app permissions;
-- characters and player-editable game data;
+The KB event log is authoritative for campaign assets and their histories, including current state derived from those histories.
+
+Examples include:
+
+- Campaign configuration represented as campaign facts/events;
+- Characters and game data;
 - lifecycle state;
-- current location references used by scheduling;
+- current location;
 - commitments;
-- GM availability windows;
-- Calls to Adventure;
-- expedition participation;
-- app-side moderation workflow state;
-- audit records for app operations.
+- locations;
+- GM availability;
+- Calls to Adventure and expeditions;
+- participation;
+- campaign facts and wiki knowledge;
+- provenance, corrections, and retractions.
 
-Knowledge-base-owned state includes facts, events, provenance, redaction, and knowledge visibility as defined by the shared contract and KB documentation.
+### Application-owned transient/operational state
 
-When a concept spans both sides, the shared contract is authoritative for the interface between them.
+`app-be` may own transient technical state that is not canonical campaign state, such as:
+
+- authentication/session implementation details;
+- request correlation IDs;
+- short-lived orchestration state;
+- caches that can be discarded and rebuilt;
+- infrastructure telemetry.
+
+Any durable app-owned state must be explicitly justified so that a second source of truth is not created accidentally.
 
 ## Character State Authority
 
-Application workflows enforce the principle from ADR 001:
+Application workflows enforce two complementary decisions:
 
 > Campaign state changes through actions, not arbitrary edits.
 
-Examples:
+and
 
-- travel action -> travel commitment -> location update;
-- activation request -> validation -> `DRAFT` to `ACTIVE`;
-- retirement request -> lifecycle change + world-person linkage workflow;
-- join expedition -> participation record + blocking commitment.
+> The KB event log is the source of truth; current Character state is a projection.
 
-GM/Admin direct corrections are exceptional overrides and should be auditable.
+Thus activation does not update a Character row from `DRAFT` to `ACTIVE`. The application validates the activation command and causes an accepted activation event to enter the KB. The next Character projection reflects the new lifecycle state and location.
 
 ## Calendar-Driven Processing
 
-Because one campaign day equals one real-world day, the application needs reliable processing of date-based transitions such as:
+Because one campaign day equals one real-world day, the system needs reliable processing of date-driven state transitions such as scheduled downtime starting and active downtime completing.
 
-- `SCHEDULED` downtime becoming `ACTIVE` on its start date;
-- `ACTIVE` downtime becoming `COMPLETED` after its end date;
-- resulting availability changes;
-- activity-specific completion hooks.
+The exact mechanism may involve app-be jobs, KB projection-time logic, event generation, request-time reconciliation, or a combination. Whatever implementation is chosen, externally observed projections must be correct for the campaign date and historical changes must remain event-backed.
 
-Implementation may use scheduled jobs, request-time reconciliation, or both, but externally observed state must be correct for the current campaign date even if a background job was delayed.
+A dedicated ADR should decide which component is responsible for emitting automatic time-based events.
 
 ## Security
 
@@ -151,42 +225,22 @@ The application must enforce:
 
 - server-side authorization;
 - campaign-membership isolation;
-- role/capability checks for every protected operation;
+- role/capability checks for protected commands;
 - no leakage of GM-only knowledge into player-visible LLM context;
-- secure storage of LLM/API credentials;
-- input and upload limits;
-- audit logging for important state changes;
-- treatment of player-authored documents as untrusted data rather than instructions.
+- secure storage of credentials;
+- input/upload limits;
+- treatment of player-authored content as untrusted data.
 
-Redaction across the KB boundary must happen before protected content reaches the app client.
+The KB must resolve viewer-aware redaction before protected content crosses the boundary into the application.
 
 ## Error and Conflict Handling
 
-The application should preserve user intent and explain conflicts rather than silently rewriting state. Examples include:
+The application should preserve user intent and explain domain conflicts rather than silently rewriting projected state.
 
-- attempted overlapping commitments;
-- character becoming ineligible after joining an expedition;
-- GM availability being removed;
-- opportunity region changing;
-- two players competing for the last party slot;
-- ambiguous natural-language references;
-- exceptional lifecycle overrides.
+Examples include overlapping commitments, roster-limit conflicts, invalid activation locations, character ineligibility, GM availability changes, party-capacity conflicts, and ambiguous natural-language references.
 
-Where safe, failed operations should be retryable after the conflict is resolved.
+Failed commands create no authoritative state change unless an explicit failure/audit event is part of the domain design.
 
 ## Extensibility
 
-Shadowdark is the first supported game system, but game-specific mechanics should live behind game-system/campaign-specific resolvers where possible.
-
-The core application engine should understand generic concepts such as:
-
-- time;
-- commitments;
-- lifecycle;
-- location;
-- ownership;
-- eligibility;
-- scheduling;
-- domain-action state transitions.
-
-Game-system adapters may determine details such as travel duration, carousing outcomes, crafting rules, recovery effects, or character-sheet validation.
+Shadowdark is the first supported game system. Game-specific mechanics should live behind game-system/campaign-specific resolvers while the core application understands generic concepts such as time, commitments, lifecycle, location, ownership, eligibility, scheduling, and domain commands.
