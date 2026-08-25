@@ -29,11 +29,15 @@ Read `doc/BUILD-PLAN.md`. For each phase, find or create a milestone. For each t
 an issue in that milestone.
 
 ```bash
-# One milestone per phase
-gh api repos/{owner}/{repo}/milestones \
-  -f title="Phase 1: Foundation" \
-  -f description="Digested from doc/BUILD-PLAN.md"
+# One milestone per phase — idempotent, prints the milestone number
+task-tracking/github-issues/milestone.sh ensure \
+  --title "Phase 1: Foundation" --description "Digested from doc/BUILD-PLAN.md"
 ```
+
+`task-tracking/github-issues/milestone.sh` wraps every milestone-level `gh api` call this adapter
+needs (`ensure`/`close`/`list`) behind a narrow, fixed-flag interface — no free-form `gh api`
+invocation — so it is safe to allowlist for unattended approval, same rationale as `create-task.sh`
+below. Prefer it over raw `gh api repos/.../milestones` calls everywhere in this document.
 
 ```bash
 # One issue per task. The plan ID goes in the title; everything else in the body.
@@ -44,15 +48,15 @@ gh issue create \
   --body "$(cat <<'EOF'
 **Test:** Validate email format with regex
 **Files:** src/validators/email.ts, tests/validators/email.test.ts
+**Depends:** #41
 **Verify:** unit test
 EOF
 )"
 ```
 
-**Dependencies are wired via blocking relationships, not body text.** After creating all issues for
-a phase, set `blockingIssueId → issueId` pairs using the GraphQL `addBlockedBy` mutation (see
-§Blocking relationships below). Do not use `**Depends:** #N` in the issue body — that text requires
-body parsing and goes stale; the native relationship is queryable and rendered in the GitHub UI.
+**`gh issue create` does not support `--json`/`--jq`.** Unlike most `gh` subcommands, `issue create`
+prints only the created issue's URL to stdout — `--json` fails with `unknown flag`. Parse the number
+from the URL's trailing path segment instead: `number="${url##*/}"`.
 
 **Idempotence.** Look the task up by its plan ID before creating:
 
@@ -61,8 +65,43 @@ gh issue list --search "in:title \"Task 1.2:\"" --label "autocode:task" \
   --state all --json number,title --jq '.[0].number'
 ```
 
+**`gh`'s built-in `--jq` does not support `--arg`.** It takes a single bare expression, not the
+standalone `jq` binary's full CLI — passing `--arg name value` fails with `unknown arguments`. For a
+parameterized query (e.g. matching a prefix built from a variable), emit `--json` and pipe through
+the real `jq` binary instead:
+
+```bash
+gh issue list --state all --search "in:title \"${prefix}\"" --json number,title \
+  | jq -r --arg p "$prefix" '[.[] | select(.title | startswith($p))][0].number // empty'
+```
+
+This also generalizes the idempotence lookup to grouped-task issues (see *Grouping tasks into one
+issue* below): match on everything before the title's first colon rather than an exact `"Task X.Y:"`
+string, so both `"Task 1.2: ..."` and `"Tasks 1.2-1.4: ..."` are found correctly.
+
 If it exists, update the body only — never the labels or state. Re-running digest after a plan
 amendment adds new issues and refreshes descriptions; work already done stays done.
+
+**Grouping tasks into one issue.** `plan.digest` need not be one-issue-per-task. Where several
+adjacent tasks in the same phase would naturally be committed together (same module, same feature,
+tightly coupled Test criteria), digest them into a single issue titled `Tasks X.Y-X.Z: <description>`
+with each task's `**Test:**`/`**Files:**` listed under its own `### Task X.Y: ...` heading in the
+body. Never group across a phase boundary — a milestone-crossing issue breaks `phase.complete`'s
+precondition that no `open` task remains in a closed phase. Wire `**Depends:**` to real issue numbers
+for same-phase dependencies (create the depended-on issue first and read its number back); note
+cross-phase dependencies in prose instead, since phase ordering already gates them for `task.next()`.
+
+Tasks whose `Files:` is `none (external)` — provisioning real infrastructure, registering accounts,
+manually verifying a real client — are not autonomous-safe. Digest these to their own issue(s),
+never mixed into an agent-executable issue, labelled `status:deferred` (keeps them out of
+`task.next()`) plus a plain `operator-action` label for human filtering.
+
+`task-tracking/github-issues/create-task.sh` implements exactly this: idempotent creation given
+`--title/--milestone/--owner/--body-file`, where `--owner agent` applies `autocode:task` and
+`--owner operator` applies `autocode:task,status:deferred,operator-action`. Its interface is
+deliberately narrow (fixed flags, body from a file, no free-form `gh` invocation) so it is safe to
+allowlist for unattended approval — see `core/principles/best-practices.md` §Scripts Intended for
+the Permission Allowlist.
 
 Then write the back-link into the plan, directly under its title:
 
@@ -105,19 +144,13 @@ gh issue list \
 ```
 
 - A task is a candidate only if it is open and carries none of the `status:*` labels.
-- Dependencies are satisfied when all issues that block this one are closed. Query via GraphQL (see
-  §Blocking relationships) rather than parsing `**Depends:**` body text — the body field is no
-  longer the source of truth for dependency state.
+- Parse `**Depends:** #41, #42` from the body. A dependency is satisfied when that issue is closed
+  or carries `status:implemented`.
 - Sort by plan ID, not issue number — issue numbers reflect creation order, which digest does not
   guarantee matches plan order.
 - Before starting, check `doc/LESSONS.md` Deferred Opportunities for items whose domain matches
   this task. Recurrence >= 2 escalates its priority; recurrence >= 3 means resolve the deferred
   learning first.
-
-**GitHub Projects alternative:** If the project uses GitHub Projects V2 status fields (Todo, In
-Progress, Done, etc.) instead of `status:*` labels, filter candidates by Projects status rather
-than labels. Query via the Projects V2 GraphQL API — see §Status via GitHub Projects below. Note:
-`phase-status.sh` does not support this mode and must be updated before autonomous operation.
 
 **Multi-writer caveat:** claim immediately, then re-read (see `task.claim`).
 
@@ -178,9 +211,8 @@ gh issue create \
 **Files:** src/validators/email.ts"
 ```
 
-For deferred reflection items, reference `doc/LESSONS.md` in the body. If the project uses GitHub
-Projects Priority field instead of a `priority:low` label, set that field via the Projects V2 API
-(see §Status via GitHub Projects below).
+For deferred reflection items, add the `priority:low` label and reference `doc/LESSONS.md` in the
+body.
 
 The new issue does **not** get written back into `doc/BUILD-PLAN.md`; the plan is frozen after
 approval.
@@ -289,147 +321,15 @@ Close the milestone. Its closed issues and their comment threads are the archive
 to rotate.
 
 ```bash
-# Milestone numbers are not phase numbers; look it up by title
-number=$(gh api repos/{owner}/{repo}/milestones --jq \
-  '.[] | select(.title | startswith("Phase 1:")) | .number')
-
-gh api -X PATCH repos/{owner}/{repo}/milestones/$number -f state=closed
+# Milestone numbers are not phase numbers; milestone.sh looks it up by exact title
+# and closes it, printing the milestone number
+task-tracking/github-issues/milestone.sh close --title "Phase 1: Foundation"
 ```
 
 **Precondition:** no `open` tasks remain in the milestone. Tasks at `status:deferred` may remain —
 those are intentionally not being done autonomously.
 
 If the next phase's milestone does not exist yet, `plan.digest` creates it.
-
----
-
----
-
-## Blocking relationships
-
-GitHub Issues supports native blocking/blocked-by relationships via the GraphQL API. Use these
-instead of `**Depends:** #N` body text — the relationship is queryable, rendered in the UI, and
-never goes stale.
-
-**Required token scope:** `project` (in addition to `repo`). Classic PAT; fine-grained PATs may be
-blocked at the org level.
-
-### Setting a relationship
-
-The mutation takes GraphQL node IDs, not issue numbers. Fetch node IDs first:
-
-```bash
-# Get node IDs for a set of issues in one query
-gh api graphql -f query='{
-  repository(owner:"OWNER", name:"REPO") {
-    i1: issue(number:1) { id }
-    i2: issue(number:2) { id }
-  }
-}'
-```
-
-Then wire each pair. `addBlockedBy(issueId: X, blockingIssueId: Y)` means "X is blocked by Y"
-(Y must close before X is unblocked):
-
-```bash
-gh api graphql -f query='mutation {
-  addBlockedBy(input: {
-    issueId: "BLOCKED_NODE_ID",
-    blockingIssueId: "BLOCKING_NODE_ID"
-  }) { clientMutationId }
-}'
-```
-
-To remove a relationship:
-
-```bash
-gh api graphql -f query='mutation {
-  removeBlockedBy(input: {
-    issueId: "BLOCKED_NODE_ID",
-    blockingIssueId: "BLOCKING_NODE_ID"
-  }) { clientMutationId }
-}'
-```
-
-### Checking dependency satisfaction in `task.next()`
-
-A task's dependencies are satisfied when all issues that block it are closed. Query the blocking
-issues for a given task node ID:
-
-```bash
-gh api graphql -f query='{
-  node(id: "ISSUE_NODE_ID") {
-    ... on Issue {
-      number
-      blockedByIssues(first: 20) {
-        nodes { number state }
-      }
-    }
-  }
-}'
-# A task is unblocked when all nodes have state == "CLOSED"
-```
-
----
-
-## Status via GitHub Projects
-
-If the project uses GitHub Projects V2 status fields (e.g. Todo / In Progress / Done) instead of
-`status:*` labels, the label-based filtering in `task.next()`, `task.claim()`, and
-`task.complete()` must be replaced with Projects V2 GraphQL queries.
-
-**Required scope:** `project`.
-
-### Getting the project and field IDs (one-time setup)
-
-```bash
-# List projects on the org
-gh api graphql -f query='{
-  organization(login:"OWNER") {
-    projectsV2(first:5) {
-      nodes { id title number
-        fields(first:20) {
-          nodes {
-            ... on ProjectV2SingleSelectField { id name options { id name } }
-          }
-        }
-      }
-    }
-  }
-}'
-```
-
-Record the project `id`, the Status field `id`, and each option `id` (Todo, In Progress, Done,
-etc.). Store these as constants — they are stable unless the project is reconfigured.
-
-### Updating an item's status
-
-```bash
-# First, get the project item ID for the issue
-gh api graphql -f query='{
-  repository(owner:"OWNER", name:"REPO") {
-    issue(number: 42) {
-      projectItems(first:5) { nodes { id } }
-    }
-  }
-}'
-
-# Then set the status field
-gh api graphql -f query='mutation {
-  updateProjectV2ItemFieldValue(input: {
-    projectId: "PROJECT_NODE_ID"
-    itemId:    "ITEM_NODE_ID"
-    fieldId:   "STATUS_FIELD_ID"
-    value: { singleSelectOptionId: "IN_PROGRESS_OPTION_ID" }
-  }) { clientMutationId }
-}'
-```
-
-### Harness compatibility
-
-`phase-status.sh` reads `status:*` labels and does not query Projects V2. It is **not compatible**
-with Projects-based status without modification. Until updated, autonomous harness operation is
-unavailable on projects using GitHub Projects for status.
 
 ---
 
