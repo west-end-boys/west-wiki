@@ -20,11 +20,14 @@ Possible attributes:
 - `id`
 - `name`
 - `timezone`
-- `maximumActiveCharactersPerPlayer`
+- `gameSystem`
+- `characterRules`
+  - `maxRosterSize`
+  - `activationPolicy` (`AUTOMATIC` or `GM_APPROVAL`; see [ADR 002](adr/002-character-lifecycle-and-retirement.md))
+- `downtimeRules`
+  - `maxActivitiesBetweenExpeditions`
 - `defaultSessionDuration`
 - `publicVisibilitySettings`
-- `gameSystem`
-- game-system/campaign configuration such as downtime limits
 
 ### CampaignMembership
 
@@ -46,7 +49,8 @@ Possible core attributes:
 - `ownerUserId`
 - `name`
 - `lifecycleStatus`
-- `currentLocationId` nullable for drafts
+- `currentLocation` — embedded location projection, undefined for drafts
+- `countsAgainstRosterLimit` — derived from `lifecycleStatus`
 - `gameSystem`
 - `gameData`
 - `createdAt`
@@ -63,7 +67,7 @@ Initial lifecycle values:
 - `DEAD`
 - `ARCHIVED`
 
-Roster-counting states are `ACTIVE` and `MISSING`.
+Roster-counting states are `ACTIVE` and `MISSING`; `countsAgainstRosterLimit` is derived from this rule rather than stored independently.
 
 ### CharacterCommitment
 
@@ -114,7 +118,7 @@ Possible attributes:
 - `name`
 - `type`
 - `isSafe`
-- `isPermittedStartingLocation`
+- `allowsCharacterActivation`
 - `visibility`
 
 Possible types include settlement, dungeon, landmark, route, and wilderness site.
@@ -186,16 +190,17 @@ Stores structured campaign changes extracted or suggested by the LLM before GM a
 1. Player chooses an owned `DRAFT` character.
 2. Player requests activation and selects a starting location.
 3. Application validates:
+   - the character exists and is owned by the requesting player;
    - player has fewer roster-counting characters than the configured limit;
    - required game-system data is present and valid;
-   - selected location is a permitted starting location;
-   - no campaign-specific rule blocks activation.
+   - selected location allows character activation;
+   - the campaign's `characterRules.activationPolicy` is `AUTOMATIC`.
 4. Standard activation succeeds automatically.
 5. Character transitions `DRAFT -> ACTIVE`.
-6. `currentLocationId` is set.
+6. `currentLocation` is set to the selected location's projection.
 7. The transition is audited.
 
-Exceptional starting-location requests may enter a GM-approval path.
+Exceptional starting-location requests, or campaigns configured for `GM_APPROVAL`, may enter a GM-approval path.
 
 ## Character Retirement Workflow
 
