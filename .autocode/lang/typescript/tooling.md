@@ -60,7 +60,7 @@
 
 ### Vitest (Recommended)
 ```bash
-pnpm add -D vitest @vitest/coverage-v8
+npm install --save-dev vitest @vitest/coverage-v8
 ```
 
 ```json
@@ -74,7 +74,7 @@ pnpm add -D vitest @vitest/coverage-v8
 
 ### Jest (Alternative)
 ```bash
-pnpm add -D jest ts-jest @types/jest
+npm install --save-dev jest ts-jest @types/jest
 ```
 
 ## Package Management
