@@ -77,7 +77,7 @@ secrets/
 *.key
 ```
 
-Create `.env.example` (committed — template only, no real values):
+Create `_env.example` (committed — template only, no real values):
 ```bash
 # Copy to .env and fill in real values. Never commit .env.
 API_KEY=your-api-key-here
@@ -86,7 +86,7 @@ DATABASE_URL=postgresql://user:pass@localhost/dbname
 
 Create `.env` (gitignored — real values):
 ```bash
-cp .env.example .env
+cp _env.example .env
 # Edit .env with real credentials
 ```
 
@@ -342,7 +342,7 @@ The commit should include:
 - Project source scaffold and hello world implementation
 - Test(s) covering hello world
 - Linting config files
-- `.env.example` (not `.env`)
+- `_env.example`
 - `.gitignore`
 - Planning docs (`REQUIREMENTS.md`, `ARCHITECTURE.md`, `SPECS.md`) and any tracker files the bound
   adapter keeps in the repo

@@ -32,6 +32,7 @@ packages/
 
 doc/
   REPO-STRUCTURE.md      This file. Layout, ownership, document map.
+  DEVELOPMENT.md         Dev environment setup, git hooks, local workflow.
   BUILD-PLAN.md          Phase plan. Frozen after approval, links to milestone.
   LESSONS.md             Reflection triage.
   ARCHITECTURE.md        System level: the two apps, the boundary, deployment.
@@ -51,6 +52,9 @@ doc/
 
 .github/
   CODEOWNERS
+
+.githooks/
+  pre-commit       Tracked pre-commit hook. See doc/DEVELOPMENT.md.
 ```
 
 ---
@@ -101,6 +105,7 @@ determines whose review is required.
 |---|---|---|
 | `README.md` | joint | rare |
 | `doc/REPO-STRUCTURE.md` | joint | rare |
+| `doc/DEVELOPMENT.md` | joint | rare |
 | `doc/ARCHITECTURE.md` | joint | rare |
 | `doc/contract/**`, `packages/contract/**` | **both** | per boundary change |
 | `doc/kb/**`, `packages/kb/**` | benjaminbradley | per task |

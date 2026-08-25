@@ -53,6 +53,30 @@ if (!user) return null;  // Caller has no idea why
 - Provide sensible defaults
 - Document all configuration options
 
+## Scripts Intended for the Permission Allowlist
+
+Claude Code's permission system allowlists a *literal command string*, not a script's behavior. A
+script that is safe to run unattended is still useless for the allowlist if it is never invoked the
+same way twice.
+
+- **Invoke it as a single bare command per call.** `script.sh --flag value ...` — no `set -e`
+  wrapper, no `$(...)` capture, no `&&` chaining with other commands, no surrounding `echo`. A
+  multi-line shell block never matches a clean `Bash(script.sh:*)` allowlist pattern, no matter how
+  safe the script itself is.
+- **Design the script's interface for this.** Fixed flags, explicit validation, a narrow set of
+  permitted operations (e.g. `--body-file` instead of an inline string, so callers never need shell
+  quoting gymnastics inside the command). The narrower the interface, the more confidently a human
+  can allowlist it.
+- **Chain values across calls by reading tool output, not shell variables.** If one invocation's
+  result (a created resource's ID, say) is needed by a later call, read it from that call's returned
+  output and pass it as a literal argument to the next call — do not thread it through a shell
+  variable spanning multiple invocations, since that reintroduces the multi-command wrapping this
+  practice exists to avoid.
+- **Prefer the dedicated file-write tool over shell heredocs** (`cat > file <<EOF`) for any content
+  the script will consume via a flag like `--body-file`. A heredoc is itself a multi-line shell
+  invocation subject to the same allowlist problem; writing the file directly keeps the actual
+  command call to the single bare invocation above.
+
 ## Documentation
 
 ### Code Comments
@@ -104,6 +128,8 @@ sharing a document.
 
 **Minimum surface area** — Every line added to `CLAUDE.md` is a maintenance commitment. The correct default when information already exists in another document is a link, not a copy. A smaller `CLAUDE.md` is easier to keep accurate and easier to read cold.
 
+**Lead with the correct action, not the wrong one** — A warning that opens with the mistake ("Don't do X") makes a skimming reader process X before the negation — the "don't think of a pink elephant" effect — so the named wrong action is often what sticks, not the prohibition on it. Put the correct action first and in the position/emphasis (bold, sentence-initial) a skimmer's eye lands on; demote the wrong action to a brief, unemphasized aside, and only name it at all when recognition requires it (e.g., it matches a command the reader might already have in their history). Where both convey the same fact, prefer describing the desired end state ("gateway's config has no KV binding") over an imperative prohibition ("don't add a KV binding").
+
 ## Performance
 
 - Don't optimize prematurely
@@ -115,7 +141,9 @@ sharing a document.
 
 ### Secrets Management
 - **Never commit secrets** - use environment variables (`.env`)
-- Template file: `.env.example` (committed, no real values)
+- Template file: `_env.example` (committed, no real values). The leading underscore keeps the
+  template visible in a default directory listing, and keeps it from matching the `.env*` ignore
+  pattern so no negation rule is needed.
 - Real secrets: `.env` (gitignored, never committed)
 - Test setup: Use obviously fake placeholders with clear comments
   ```
@@ -145,7 +173,7 @@ sharing a document.
 - Follow principle of least privilege
 
 ### Pre-commit Enforcement
-- Add `.env*` patterns to `.gitignore` (except `.env.example`)
+- Add `.env*` patterns to `.gitignore`
 - Use pre-commit hooks to scan for secrets
 - Block commits containing secrets
 - Run security linters in CI
