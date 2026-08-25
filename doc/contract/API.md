@@ -5,32 +5,36 @@ Last updated: August 24, 2026
 
 ## Purpose
 
-This document defines the conventions for the HTTP API and the shared contract between West Wiki components.
+This document defines the conventions for the HTTP API exposed by `packages/app-be` and its interaction with the event-sourced Knowledge Base (KB).
 
-The executable TypeScript contract lives under `packages/contract`. The OpenAPI description for the HTTP surface lives alongside that contract.
+The KB event log is the source of truth for campaign state. The application backend exposes viewer-safe projections for reads and explicit domain commands for writes.
+
+See `doc/adr/001-event-sourced-fact-store.md`.
 
 ## Contract Philosophy
 
-### Read resources; command meaningful state changes
+### Read projections; command meaningful state changes
 
 The API uses a hybrid resource/command style.
 
-Ordinary reads and simple player-editable data use conventional resource-oriented HTTP operations.
+Reads use conventional resource-oriented HTTP operations and return current projections derived by the KB.
 
 Examples:
 
 ```text
-GET   /campaign
-GET   /characters
-GET   /characters/{characterId}
-PATCH /characters/{characterId}
+GET /campaign
+GET /characters
+GET /characters/{characterId}
+GET /locations
 ```
 
-Meaningful campaign-state transitions use explicit operations on a resource.
+Writes use explicit operations on resources.
 
 Examples:
 
 ```text
+POST /characters
+POST /characters/{characterId}/edit
 POST /characters/{characterId}/activate
 POST /characters/{characterId}/retire
 POST /characters/{characterId}/travel
@@ -39,124 +43,145 @@ POST /characters/{characterId}/downtime
 
 The convention is:
 
-> Use CRUD for ordinary editable resource data; use `<resource>/<operation>` for domain actions with rules, consequences, or lifecycle transitions.
+> Use resource-shaped GETs for current projections and `<resource>/<operation>` commands for changes that produce new KB events.
 
-The API should expose domain intent rather than arbitrary persistence operations.
+The application API does not expose arbitrary persistence mutation.
+
+### The KB event log is authoritative
+
+The application backend does not own mutable canonical Character, Location, Campaign, Expedition, or similar campaign-state records.
+
+For reads:
+
+1. `app-be` resolves authenticated user and viewer context.
+2. `app-be` requests the appropriate projection from the KB.
+3. The KB applies redaction and returns only viewer-permitted projected data.
+4. `app-be` maps that projection into the HTTP response DTO.
+
+For writes:
+
+1. the caller submits a domain command;
+2. `app-be` authenticates and authorizes the caller;
+3. `app-be` retrieves current projections needed for validation;
+4. `app-be` validates campaign/domain rules;
+5. a successful command produces one or more structured event proposals/writes for the KB;
+6. the KB appends accepted events rather than mutating prior events;
+7. the resulting current state is observed through projections.
+
+Corrections and retractions are events, never in-place changes or deletions.
 
 ### Queries and commands are conceptually distinct
 
 Queries ask what is currently true and do not change authoritative state.
 
-Commands request a domain transition and are validated against authorization, campaign rules, current state, and conflicts.
+Commands express user intent and are validated against authorization, campaign rules, current projected state, and conflicts.
 
-West Wiki does not require a full CQRS implementation to preserve this distinction.
+West Wiki does not require a full CQRS framework to preserve this distinction.
 
 ### The caller does not control authoritative context
 
-Authenticated identity, campaign membership, and permissions are resolved server-side.
+Authenticated identity, campaign membership, permissions, and viewer role are resolved server-side.
 
 A caller must not be able to declare that it is a GM, Administrator, character owner, or other privileged actor merely by supplying fields in a request body.
 
-Likewise, ordinary player requests must not directly assign authoritative state such as:
+Ordinary player requests must not directly assign authoritative values such as lifecycle status, current location, commitments, expedition participation, ownership, or derived availability. Those values change only through validated commands that result in KB events, or explicit audited GM/Administrator override commands.
 
-- character owner;
-- lifecycle status;
-- current location;
-- commitments;
-- expedition participation;
-- derived availability.
+### Player-managed character edits are still events
 
-Those values change through domain operations or explicit audited GM/Administrator overrides.
+Even apparently ordinary character edits such as name, description, ability scores, or other `gameData` changes are not mutable PATCH operations against a stored Character row.
+
+The HTTP API may offer an ergonomic command such as:
+
+```text
+POST /characters/{characterId}/edit
+```
+
+but the backend treats that request as a proposed correction/new fact and records the accepted change through the KB event model.
 
 ### The LLM uses the same domain operations as conventional UI
 
 Natural language is an input adapter, not a privileged control plane.
 
-For example, the statement:
+For example:
 
 > Tordek starts crafting armor next Tuesday.
 
-should ultimately resolve to the same structured downtime operation that a form-based UI would submit.
+must ultimately resolve to the same structured downtime command that a conventional form submits.
 
-The LLM does not receive unrestricted database-write access.
+The LLM does not receive unrestricted KB or database write access.
 
 ### Domain failures are normal API outcomes
 
-Expected rule failures should use stable machine-readable error codes and useful human-readable messages.
+Expected rule failures use stable machine-readable error codes and useful human-readable messages.
 
-Examples include:
+Examples include roster-limit reached, commitment conflict, invalid starting location, character not eligible, and downtime allowance exhausted.
 
-- roster limit reached;
-- commitment conflict;
-- invalid starting location;
-- character not eligible;
-- downtime allowance exhausted.
+Server or KB faults are distinct from expected domain rejection.
 
-Server faults are distinct from expected domain rejection.
+### API DTOs are projections, not persistence entities
 
-### API DTOs are not database entities
+Contract types are designed for client use cases. They represent current viewer-safe projections and command inputs/results, not raw KB events or database structures.
 
-Contract types are designed for use cases, not generated by serializing persistence models.
+Raw KB event shapes do not leak through the public application API unless a dedicated history/provenance use case explicitly requires them.
 
-Responses should expose only information appropriate for the caller and operation.
+### Knowledge redaction occurs in the KB
 
-### Knowledge redaction occurs before data reaches the app
+Viewer context is part of every relevant KB read. GM-only content must be filtered by the KB before it reaches `app-be` or the frontend.
 
-For data retrieved through the knowledge-base boundary, viewer context is part of every relevant read. GM-only content must be filtered on the KB side rather than sent to a client and hidden there.
+Client-side filtering is never a security boundary.
 
-## Source of Truth
+## Contract Locations
 
-For the current monorepo, the TypeScript definitions in `packages/contract` are the executable source of truth for shared application types.
+The application HTTP contract currently lives under `packages/app-be`.
 
-The OpenAPI document describes the HTTP projection of those types and should remain synchronized with them.
+- TypeScript contract types: `packages/app-be/src/index.ts`
+- OpenAPI description: `packages/app-be/openapi.yaml`
 
-Once an implementation framework is selected, the project should adopt tooling that either generates OpenAPI from the executable TypeScript contract or validates the two representations against each other. The project should not maintain two independent hand-written schemas indefinitely.
+The KB/app boundary is a separate contract concern and should be documented explicitly as that interface stabilizes.
 
 ## Initial Slice
 
-The first contract slice proves the campaign and character-management foundation without requiring expeditions, GM scheduling, LLM integration, or KB integration.
+The first slice proves campaign and character management through the event-sourced KB.
 
 It should allow a player to:
 
-1. read campaign configuration;
-2. list owned characters;
-3. read a character;
-4. create a draft character;
-5. edit player-managed character fields;
-6. list permitted starting locations;
-7. activate a draft character through a domain command;
-8. query date-specific character availability;
-9. retire a character through a domain command.
+1. read the current Campaign projection;
+2. list owned Character projections;
+3. read a Character projection;
+4. create a draft character through a command/event;
+5. edit player-managed character data through a command/event;
+6. list permitted starting Location projections;
+7. activate a draft character through a validated command/event;
+8. query date-specific derived availability;
+9. retire a character through a validated command/event.
 
 ### Initial endpoints
 
 ```text
-GET   /campaign
-GET   /characters
-POST  /characters
-GET   /characters/{characterId}
-PATCH /characters/{characterId}
-GET   /locations?startingLocation=true
-POST  /characters/{characterId}/activate
-GET   /characters/{characterId}/availability?date=YYYY-MM-DD
-POST  /characters/{characterId}/retire
+GET  /campaign
+GET  /characters
+POST /characters
+GET  /characters/{characterId}
+POST /characters/{characterId}/edit
+GET  /locations?startingLocation=true
+POST /characters/{characterId}/activate
+GET  /characters/{characterId}/availability?date=YYYY-MM-DD
+POST /characters/{characterId}/retire
 ```
 
-`Region` is intentionally not part of this initial contract. A character always has a `Location` once active. Region may be introduced when adventure opportunities, geographic Call-to-Adventure eligibility, and GM regional authorization require it.
+`Region` is intentionally not part of this initial contract. A character has a `Location` once active. Region may be introduced when adventure opportunities, geographic Call-to-Adventure eligibility, and GM regional authorization require it.
 
 ## Initial Shared Types
 
-The first executable contract should define at least:
+The executable app contract should define at least:
 
-- opaque/stable IDs for Campaign, User, Character, Location, and Commitment;
+- stable IDs for Campaign, User, Character, Location, and Commitment;
 - ISO local-date representation;
 - Character lifecycle states;
-- Campaign view and character rules;
-- Character summary/detail views;
-- Location summary;
-- character create/update requests;
-- activation request/result;
-- retirement request/result;
+- Campaign, Character, and Location projection DTOs;
+- character create/edit command requests;
+- activation command request/result;
+- retirement command request/result;
 - availability result and reason codes;
 - standard API/domain error shape.
 
@@ -165,19 +190,17 @@ The first executable contract should define at least:
 Initial HTTP conventions:
 
 - `200` - successful read or command returning a representation;
-- `201` - successful resource creation;
+- `201` - successful creation command;
 - `400` - malformed request or syntactic validation failure;
 - `401` - unauthenticated;
 - `403` - authenticated but unauthorized;
 - `404` - requested resource not visible/found;
-- `409` - valid request rejected because current domain state conflicts with the requested operation;
-- `422` - request is structurally valid but fails domain validation that is not specifically a state conflict;
-- `500` - unexpected server failure.
+- `409` - valid request rejected because current projected state conflicts with the requested command;
+- `422` - request is structurally valid but fails other domain validation;
+- `500` - unexpected application or KB failure.
 
-Expected command rejection should return a stable `ApiError` body.
+Expected command rejection returns a stable `ApiError` body.
 
 ## Versioning
 
-No HTTP API version prefix is required for the initial monorepo implementation. Both sides of the boundary evolve atomically in the same repository.
-
-Introduce explicit API versioning when external consumers, separately deployed clients, or independent release schedules make compatibility management necessary.
+No HTTP API version prefix is required for the initial monorepo implementation. Introduce explicit versioning when separately deployed consumers or independent release schedules require compatibility management.
