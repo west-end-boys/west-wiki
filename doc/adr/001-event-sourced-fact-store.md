@@ -135,17 +135,17 @@ Concretely:
   requirement 3 — derived-value recomputation from a corrected sequence — is now doing most of the
   work of ruling out a mutable store.
 - **Open question 1, event schema versioning**, is carried forward to
-  `doc/adr/003-fact-model-veracity-and-visibility.md` as fact-type versioning, and is still open.
+  `doc/adr/004-fact-model-veracity-and-visibility.md` as fact-type versioning, and is still open.
 - **Open question 3, partial retraction UX**, is resolved as deferred per the first bullet.
 
-`doc/adr/002-kb-app-ownership-boundary.md` scopes which entities this store is responsible for, and
-`doc/adr/003-fact-model-veracity-and-visibility.md` defines the entry structure this ADR left open.
+`doc/adr/003-kb-app-ownership-boundary.md` scopes which entities this store is responsible for, and
+`doc/adr/004-fact-model-veracity-and-visibility.md` defines the entry structure this ADR left open.
 
 ## References
 
 - `doc/REPO-STRUCTURE.md` — contract boundary, redaction policy, ADR scope rules
-- `doc/adr/002-kb-app-ownership-boundary.md` — entity ownership, trust model, KB as a service
-- `doc/adr/003-fact-model-veracity-and-visibility.md` — entry kinds, registry, veracity, visibility
+- `doc/adr/003-kb-app-ownership-boundary.md` — entity ownership, trust model, KB as a service
+- `doc/adr/004-fact-model-veracity-and-visibility.md` — entry kinds, registry, veracity, visibility
 - `doc/kb/REQUIREMENTS.md` — KB-layer requirements
 - `doc/contract/API.md` — normative boundary spec
 - HANDOFF.md blocker 3 — "event sourcing is decided-by-implication but not decided-explicitly"

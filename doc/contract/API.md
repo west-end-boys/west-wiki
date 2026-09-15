@@ -9,9 +9,9 @@ This document defines the conventions for the HTTP API exposed by `packages/app-
 
 The KB event log is the source of truth for campaign **world** state. The application backend exposes viewer-safe projections of that state for reads, and explicit domain commands for writes.
 
-The application also owns coordination and configuration records of its own -- Campaign, memberships, commitments, opportunities, GM availability, calls to adventure, participation -- held as ordinary current-state rows rather than projected from the KB. Which entity belongs to which layer is settled in [ADR 002](../adr/002-kb-app-ownership-boundary.md) and tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md).
+The application also owns coordination and configuration records of its own, held as ordinary current-state rows rather than projected from the KB. Which entity belongs to which layer is tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md), which is the single source of truth for the split.
 
-See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-kb-app-ownership-boundary.md), and [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 ## Contract Philosophy
 
@@ -51,9 +51,9 @@ The application API does not expose arbitrary persistence mutation.
 
 ### The KB event log is authoritative for world state
 
-The application backend does not own mutable canonical records for the entities the KB owns: Character, Region, Location, GM regional authorization, expedition reports, and campaign world knowledge. Those are read as projections and changed only by recording facts.
+The application backend does not own mutable canonical records for the entities the KB owns. Those are read as projections and changed only by recording facts.
 
-The application *does* own its own coordination and configuration records, including Campaign, CampaignMembership, CharacterCommitment, AdventureOpportunity, GMAvailabilityWindow, CallToAdventure, and ExpeditionParticipant. These are conventional mutable rows. They have no history requirement, no provenance requirement, and no redaction requirement, and paying the event-sourcing cost for them would buy nothing. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+The application *does* own its own coordination and configuration records. These are conventional mutable rows. They have no history requirement, no provenance requirement, and no redaction requirement, and paying the event-sourcing cost for them would buy nothing. Which entity belongs to which layer is tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md); [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does.
 
 Reads of app-owned records are ordinary authorized queries. The remainder of this section describes reads and writes that cross the KB boundary.
 
@@ -134,7 +134,7 @@ Raw KB event shapes do not leak through the public application API unless a dedi
 
 These are two mechanisms and the difference matters.
 
-**Redaction** is the KB resolving a viewer-specific projection out of a fact history. Viewer context is part of every relevant KB read, and GM-only world knowledge is filtered by the KB before it reaches `app-be` or the frontend. Under the hybrid visibility rule ([ADR 003](../adr/003-fact-model-veracity-and-visibility.md)) a redacted entry still projects its effect: the viewer learns that something changed and what the resulting value is, without the cause or the provenance.
+**Redaction** is the KB resolving a viewer-specific projection out of a fact history. Viewer context is part of every relevant KB read, and GM-only world knowledge is filtered by the KB before it reaches `app-be` or the frontend. Under the hybrid visibility rule ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)) a redacted entry still projects its effect: the viewer learns that something changed and what the resulting value is, without the cause or the provenance.
 
 **Access control** is `app-be` filtering its own current-state rows by the caller's role tier -- not returning a `GM_ONLY` adventure opportunity to a player. That is an ordinary authorization check on a query, and it is the application's responsibility for the eight entities it owns.
 
@@ -194,7 +194,8 @@ The executable app contract should define at least:
 - stable IDs for Campaign, User, Character, Location, and Commitment;
 - ISO local-date representation, interpreted in the campaign's configured timezone -- see Time below;
 - Character lifecycle states;
-- Campaign, Character, and Location projection DTOs;
+- Character and Location projection DTOs;
+- a Campaign configuration DTO -- app-owned, not a KB projection;
 - character create/edit command requests;
 - activation command request/result;
 - retirement command request/result;

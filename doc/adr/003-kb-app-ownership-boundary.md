@@ -32,22 +32,10 @@ how it came to be true. The application is an interface onto that state and the 
 for the adventures that generate change. Expeditions produce expedition reports; expedition reports
 are the change records that feed the KB.
 
-| Entity | Owner |
-|---|---|
-| Character | KB |
-| Region | KB |
-| Location | KB |
-| GMRegionAuthorization | KB |
-| ExpeditionReport | KB |
-| ProposedChange | KB |
-| User | app |
-| CampaignMembership | app |
-| Campaign | app |
-| CharacterCommitment | app |
-| AdventureOpportunity | app |
-| GMAvailabilityWindow | app |
-| CallToAdventure | app |
-| ExpeditionParticipant | app |
+The resulting split is tabulated in
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), which is the single source of
+truth for entity ownership. This ADR records the reasoning behind it and does not restate the
+table.
 
 `Region` is KB-owned as the parent of `Location`. `Campaign` is app-owned: it is configuration --
 timezone, roster limits, downtime rules, activation policy -- not world state. `CallToAdventure` is
@@ -121,8 +109,9 @@ referential integrity against the application's database.
 
 ## Consequences
 
-- `doc/app-be/ARCHITECTURE.md`'s "Data Ownership" section is replaced by this table. The app may
-  hold durable operational state without special justification, provided it is not world state.
+- `doc/app-be/ARCHITECTURE.md`'s "Data Ownership" section defers to `KB-PROJECTIONS.md`'s table
+  rather than restating the split. The app may hold durable operational state without special
+  justification, provided it is not world state.
 - `doc/contract/API.md`'s statement that `app-be` owns no canonical Campaign or Expedition record is
   wrong as written and is corrected to distinguish world state from coordination records.
 - The app needs its own authorization filtering for the eight app-owned entities. This is new work
@@ -148,6 +137,6 @@ referential integrity against the application's database.
 ## References
 
 - `doc/adr/001-event-sourced-fact-store.md` -- the event-sourcing decision this scopes
-- `doc/adr/003-fact-model-veracity-and-visibility.md` -- what the KB records, and how it is seen
+- `doc/adr/004-fact-model-veracity-and-visibility.md` -- what the KB records, and how it is seen
 - `doc/contract/KB-PROJECTIONS.md` -- the projection shapes this ownership produces
 - `doc/app-be/adr/004-role-based-permission-tiers.md` -- the role tiers the KB is handed

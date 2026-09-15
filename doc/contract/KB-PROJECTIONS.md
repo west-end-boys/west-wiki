@@ -9,11 +9,11 @@ This document defines the campaign-world entities the Knowledge Base owns and th
 
 It is normative prose for the KB/app boundary. Executable types live under `packages/`; this document describes what they mean and who owns them. [`doc/contract/API.md`](API.md) covers the HTTP conventions `app-be` exposes to its own clients, which is a separate concern.
 
-The KB is an event-sourced fact store. Nothing described here is a mutable record. Each shape below is a current-state projection derived from the event log and resolved for a specific viewer role. See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-kb-app-ownership-boundary.md), [ADR 003](../adr/003-fact-model-veracity-and-visibility.md), and [`doc/kb/REQUIREMENTS.md`](../kb/REQUIREMENTS.md).
+The KB is an event-sourced fact store. Nothing described here is a mutable record. Each shape below is a current-state projection derived from the event log and resolved for a specific viewer role. See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), [ADR 004](../adr/004-fact-model-veracity-and-visibility.md), and [`doc/kb/REQUIREMENTS.md`](../kb/REQUIREMENTS.md).
 
 ## Ownership
 
-Settled in the boundary session of 2026-08-25 and recorded as [ADR 002](../adr/002-kb-app-ownership-boundary.md). That ADR is authoritative; this table restates it because the projection shapes below are meaningless without it.
+**This table is the single source of truth for entity ownership.** Settled in the boundary session of 2026-08-25. [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does; neither restates the table. Other documents link here rather than copying it.
 
 | Entity | Owner | Note |
 |---|---|---|
@@ -40,7 +40,7 @@ App-owned entities are ordinary current-state database rows. They are not event-
 
 Application records reference KB entity identifiers, and KB entities may reference application identifiers where the domain requires it -- `Character.ownerUserId`, and `ExpeditionReport`'s links to its expedition and participants.
 
-Both directions are permitted. The application guarantees that identifiers it issues are persistent and stable: once issued, an application identifier is never reused and never changes. The KB stores identifiers, not foreign keys, and enforces no referential integrity against the application's database. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+Both directions are permitted. The application guarantees that identifiers it issues are persistent and stable: once issued, an application identifier is never reused and never changes. The KB stores identifiers, not foreign keys, and enforces no referential integrity against the application's database. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 
 ## Projection Conventions
 
@@ -59,7 +59,7 @@ These apply to every shape below.
 
 Provenance is required by [ADR 001](../adr/001-event-sourced-fact-store.md) and `doc/kb/REQUIREMENTS.md`. The attribute lists below name the *values* a projection carries; each arrives wrapped in this envelope. The executable types under `packages/` define the envelope once rather than repeating it per field.
 
-**Redacted detail is present, not absent.** Under the hybrid visibility rule ([ADR 003](../adr/003-fact-model-veracity-and-visibility.md)), a viewer who may not see an entry's detail still sees that the entry exists and what it did. A projection therefore distinguishes three states for a value: fully visible, visible-with-redacted-provenance, and not visible. The middle state is a shape the contract must express, not an omission.
+**Redacted detail is present, not absent.** Under the hybrid visibility rule ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)), a viewer who may not see an entry's detail still sees that the entry exists and what it did. A projection therefore distinguishes three states for a value: fully visible, visible-with-redacted-provenance, and not visible. The middle state is a shape the contract must express, not an omission.
 
 ## Projections
 
@@ -94,7 +94,7 @@ Initial lifecycle values:
 
 Roster-counting states are `ACTIVE` and `MISSING`; `countsAgainstRosterLimit` is derived from this rule rather than stored independently. The limit it is compared against is campaign configuration and lives on the application side.
 
-A player has direct authority over characters they own: facts a player asserts about their own character enter the record without moderation ([ADR 003](../adr/003-fact-model-veracity-and-visibility.md)).
+A player has direct authority over characters they own: facts a player asserts about their own character enter the record without moderation ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)).
 
 Because the KB entity persists beyond play, a retired character does not need to be copied into a separate world-facing Person or NPC record. The KB entity was always the person; the application's playable-character concern simply ends. See [ADR 002](../app-be/adr/002-character-lifecycle-and-retirement.md).
 
@@ -138,7 +138,7 @@ The report is the source document from which proposed changes are extracted. It 
 
 ### ProposedChange
 
-Under [ADR 003](../adr/003-fact-model-veracity-and-visibility.md), player claims about the world are no longer held outside the record awaiting approval -- they enter the log immediately with a `RUMOR` veracity qualifier, and a GM promotes them by asserting canon.
+Under [ADR 004](../adr/004-fact-model-veracity-and-visibility.md), player claims about the world are no longer held outside the record awaiting approval -- they enter the log immediately with a `RUMOR` veracity qualifier, and a GM promotes them by asserting canon.
 
 LLM extractions from expedition reports also enter directly as `RUMOR` rather than waiting for approval. Nothing is held pending review any more.
 
@@ -146,13 +146,13 @@ What remains is a GM's *view* of unverified claims awaiting promotion to canon, 
 
 ## Open Items
 
-1. **Is `ProposedChange` still an entity at all?** Nothing is held pending approval any more -- see above and [ADR 003](../adr/003-fact-model-veracity-and-visibility.md) Open Question 2. Listed as KB-owned in the table pending that decision; leaning toward removing it.
+1. **Is `ProposedChange` still an entity at all?** Nothing is held pending approval any more -- see above and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md) Open Question 2. Listed as KB-owned in the table pending that decision; leaning toward removing it.
 
 2. **Attribute lists above are inherited as drafts.** They were written as "possible attributes" before the ownership split and have not been re-validated against the KB's fact-type model. Expect them to change as fact types are registered.
 
 3. **The redacted-detail projection shape is described but not designed.** The three-state value described under Projection Conventions needs a concrete type in `packages/contract` before the first viewer-differentiated projection is built.
 
-4. **Cross-boundary failure semantics.** Carried from [ADR 002](../adr/002-kb-app-ownership-boundary.md) Open Question 1: an app write plus a KB assertion is two stores and no shared transaction.
+4. **Cross-boundary failure semantics.** Carried from [ADR 003](../adr/003-kb-app-ownership-boundary.md) Open Question 1: an app write plus a KB assertion is two stores and no shared transaction.
 
 ## Resolved
 

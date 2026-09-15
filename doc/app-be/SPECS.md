@@ -7,7 +7,7 @@ Last updated: September 15, 2026
 
 This document records application-internal models and workflow semantics for West Wiki. Shared KB/app API contracts belong in [`doc/contract/API.md`](../contract/API.md) and [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), not here.
 
-The entities in this document are application-owned current-state records held in an ordinary database. They are not event-sourced and carry no provenance chain -- see [ADR 002](../adr/002-kb-app-ownership-boundary.md). Entities the KB owns are listed under "KB-owned entities" below and are consumed as projections.
+The entities in this document are application-owned current-state records held in an ordinary database. They are not event-sourced and carry no provenance chain -- see [ADR 003](../adr/003-kb-app-ownership-boundary.md). Which entities the KB owns instead is tabulated in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); those are consumed as projections, and summarized under "KB-owned entities" below.
 
 ## Initial Domain Model
 
@@ -82,7 +82,7 @@ Initial downtime statuses:
 
 ### AdventureOpportunity
 
-Visibility on this entity is enforced by application access control -- filtering rows by the caller's role tier at query time -- not by KB redaction. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+Visibility on this entity is enforced by application access control -- filtering rows by the caller's role tier at query time -- not by KB redaction. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 
 Possible attributes:
 
@@ -134,12 +134,13 @@ Possible attributes:
 
 ### KB-owned entities
 
-`Character`, `Region`, `Location`, `GMRegionAuthorization`, `ExpeditionReport`, and `ProposedChange`
-are owned by the Knowledge Base, not by the application. The application holds no canonical record of
-them; it consumes viewer-resolved projections across the KB/app boundary.
+Entities owned by the Knowledge Base rather than the application are listed in
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), which is the single source of
+truth for the split. The application holds no canonical record of them; it consumes viewer-resolved
+projections across the KB/app boundary.
 
-Their shapes are defined in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md). The
-workflows below reference them but do not restate them.
+That document also defines their shapes. The workflows below reference them but do not restate
+them.
 
 ## Character Activation Workflow
 
@@ -279,7 +280,7 @@ Exactly when a provisional call should create the blocking expedition commitment
 7. Player-safe recap may be generated/published.
 8. Provenance remains linked to the report and, where canon was asserted, to the GM who asserted it.
 
-Steps 5 and 6 reflect a trust-but-verify posture: contributions are recorded rather than queued, and the tracked history is what makes that safe. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+Steps 5 and 6 reflect a trust-but-verify posture: contributions are recorded rather than queued, and the tracked history is what makes that safe. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 Players asserting facts about their own characters, and recording world claims as rumors, do not pass through this workflow at all. Whether the GM's promotion queue is a KB `ProposedChange` entity or a view over rumor-tagged facts is still open.
 

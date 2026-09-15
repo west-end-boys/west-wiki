@@ -65,7 +65,7 @@ The LLM may interpret requests and suggest structured operations, but it cannot 
 
 ### GMs control canon; players contribute rumors
 
-A player has direct authority over their own characters and may assert facts about them without moderation. Claims a player makes about the *world* are recorded immediately but carry a `RUMOR` veracity qualifier -- attributed, preserved, and not authoritative. A GM makes something canon by asserting it. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+A player has direct authority over their own characters and may assert facts about them without moderation. Claims a player makes about the *world* are recorded immediately but carry a `RUMOR` veracity qualifier -- attributed, preserved, and not authoritative. A GM makes something canon by asserting it. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 ### Accepted changes retain provenance
 
@@ -216,7 +216,7 @@ Initial campaign-knowledge visibility levels are:
 
 The application must never rely on client-side filtering to protect GM-only content.
 
-Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 
 ## Natural-Language Interaction Requirements
 

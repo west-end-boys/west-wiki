@@ -92,7 +92,7 @@ independently without blocking on each other.
 KB side. The app never receives KB world knowledge it must hide.
 
 This is specifically about KB-owned world state. The application owns eight coordination and
-configuration entities of its own (see [ADR 002](adr/002-kb-app-ownership-boundary.md)) and is
+configuration entities of its own (see [ADR 003](adr/003-kb-app-ownership-boundary.md)) and is
 responsible for authorizing queries against those itself, filtering by the caller's role tier. That
 is access control, not redaction, and it does not involve the KB. A client-side filter is a data
 leak in either case.

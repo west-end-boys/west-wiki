@@ -11,7 +11,7 @@ The KB does not schedule play, validate gameplay rules, or drive workflows. Thos
 
 The KB is implemented as an event-sourced fact store. See [ADR 001](../adr/001-event-sourced-fact-store.md).
 
-The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 
 ## Scope and Boundary
 
@@ -50,7 +50,7 @@ The application maintains its own operational records that reference KB entity i
 
 Not priorities for the first release. Several are directions the design deliberately leaves open rather than things ruled out permanently; where that is the case it is noted.
 
-- **Runtime-defined fact types and entity types.** The fact-type registry is a deployment artifact for the initial release -- every fact type is known to the codebase. Emergent definition of new fact and entity types at runtime, and the ontology-as-configuration model that would follow from it, is the direction this design is built to allow. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+- **Runtime-defined fact types and entity types.** The fact-type registry is a deployment artifact for the initial release -- every fact type is known to the codebase. Emergent definition of new fact and entity types at runtime, and the ontology-as-configuration model that would follow from it, is the direction this design is built to allow. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 - **A universal world-building ontology.** The generic case is a longer-term ambition, not an initial deliverable.
 - **Retraction at sub-sentence or implied-fact granularity.** The event model supports it; the review UI for selecting individual implied facts does not exist. Revisit once the moderation workflow exists.
 - **Hierarchical and multi-subject facts.** The initial release supports facts about a single subject entity.
@@ -70,7 +70,7 @@ Every accepted change is recorded as a new entry in an append-only log. No entry
 
 A recorded change identifies the kind of fact it asserts. The fact type determines the shape of its payload, how the projection folds it into current state, what visibility it permits, and what authority is required to assert it. Adding a new kind of fact means registering a new fact type, not extending the event machinery.
 
-For the initial release the registry is a deployment artifact: all fact types are known to the codebase and ship with it. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+For the initial release the registry is a deployment artifact: all fact types are known to the codebase and ship with it. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 ### Recorded claims carry a veracity qualifier
 
@@ -92,7 +92,7 @@ This generalizes the pinning rule that derived values require. A fact type contr
 
 The accepted consequence is that the shape of the history is not concealed: a player can tell something happened on a given date and that they are not being shown why. Concealing the entry's existence would make history a lie rather than a redaction, and would break recomputation of any value that entry contributes to.
 
-See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 ### The application directs; the KB records
 
@@ -143,7 +143,7 @@ Records are never modified after being written.
 - Initial visibility levels are `PUBLIC`, `CAMPAIGN`, and `GM_ONLY`, matching the application's levels.
 - Viewer roles are the tiers defined in [ADR 004](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. An Administrator therefore sees everything a GM sees.
 - Viewer role is a parameter of every read. There is no unfiltered read that the application then filters.
-- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 - Redaction is resolved inside the KB. Content the viewer may not see never crosses the boundary. Client-side filtering is a data leak and is out of scope by design.
 - A projection for a given viewer is computed from the subset of the record that viewer may see. Two viewers with different roles may legitimately see different current states for the same entity.
 - Fact types that back a value required to reconcile across viewers pin their visibility, as described in Core Principles.
@@ -213,7 +213,7 @@ End-state demonstration:
 2. **Retraction of a fact that others depend on.** When a superseded fact was the basis for later facts, does retraction cascade, invalidate, or merely recompute?
 3. **Is `ProposedChange` still a KB entity** now that player world-claims enter the log as rumors, or does the GM review queue become an application-side view? See [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) Open Item 1.
 4. **Veracity beyond two values.** `RUMOR` and `CANON` may prove too coarse -- a GM-corroborated player report is neither.
-5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 002](../adr/002-kb-app-ownership-boundary.md) Open Question 1.
+5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 003](../adr/003-kb-app-ownership-boundary.md) Open Question 1.
 
 ## Resolved Questions
 
@@ -223,4 +223,4 @@ Settled 2026-09-15; recorded so they are not re-opened.
 - **Who registers fact types, and when** -- the registry is a deployment artifact for the initial release. Runtime definition is deferred, not rejected.
 - **Availability in the KB** -- the application computes availability and pushes the resulting location and status changes to the KB. The KB records them and never computes availability itself. This does not conflict with [ADR 003 (app)](../app-be/adr/003-downtime-commitments-and-availability.md): availability remains derived, and the KB holds a record of what was asserted rather than a second authority for computing it.
 - **Pending facts** -- player world-claims enter the record immediately as `RUMOR` rather than waiting outside it.
-- **LLM extractions** -- an extraction from a player's report is recorded directly as `RUMOR`, with no human approval step. The posture is trust but verify: everyone may contribute, and the tracked history plus retraction is the safety net rather than pre-moderation. The submitting human remains the author; the LLM is an interpreter whose involvement is noted, and it can never assert `CANON`. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+- **LLM extractions** -- an extraction from a player's report is recorded directly as `RUMOR`, with no human approval step. The posture is trust but verify: everyone may contribute, and the tracked history plus retraction is the safety net rather than pre-moderation. The submitting human remains the author; the LLM is an interpreter whose involvement is noted, and it can never assert `CANON`. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).

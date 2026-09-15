@@ -173,5 +173,5 @@ holding every extraction for review -- was judged the more expensive error.
 ## References
 
 - `doc/adr/001-event-sourced-fact-store.md` -- the log this structures
-- `doc/adr/002-kb-app-ownership-boundary.md` -- what the KB records facts about
+- `doc/adr/003-kb-app-ownership-boundary.md` -- what the KB records facts about
 - `doc/kb/REQUIREMENTS.md` -- the requirements this satisfies

@@ -9,9 +9,9 @@ This document describes the West Wiki application layer. The application owns UI
 
 The KB event log is the authoritative source of truth for campaign **world** state -- characters, regions, locations, world knowledge, and the history of how any of it changed. The application maintains no second authoritative store for those.
 
-The application *does* own its own coordination and configuration records, held as ordinary current-state rows. See [ADR 002](../adr/002-kb-app-ownership-boundary.md) and the Data Ownership section below.
+The application *does* own its own coordination and configuration records, held as ordinary current-state rows. Ownership is tabulated in [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); see also the Data Ownership section below.
 
-See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-kb-app-ownership-boundary.md), and [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 System-wide boundaries and deployment concerns belong in `doc/ARCHITECTURE.md`; KB internals belong in `doc/kb/ARCHITECTURE.md`.
 
@@ -176,49 +176,41 @@ Retains/submits reports according to the KB contract, requests structured propos
 
 ## Data Ownership
 
-Settled in the boundary session of 2026-08-25 and recorded as [ADR 002](../adr/002-kb-app-ownership-boundary.md), which is authoritative. Restated here because it determines what this layer may store.
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth for which layer owns which entity. This section describes what that ownership means for this layer; it does not restate the table. [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does.
 
 **The mental model:** the KB owns the state of the world and the entities within it. The application is an interface onto that state and the coordination layer for the adventures that generate expedition reports, which are the change records feeding the KB.
 
 ### KB-owned world state
 
-The KB event log is authoritative for the campaign world and its history:
-
-- Characters, their game data, lifecycle state, and current location;
-- Regions and Locations;
-- GM regional authorization;
-- expedition reports, as the original human submissions;
-- campaign facts and wiki knowledge;
-- provenance, veracity, corrections, and retractions.
+The KB event log is authoritative for the campaign world and its history, including current state derived from that history, together with provenance, veracity, corrections, and retractions.
 
 The application reads these as viewer-resolved projections and changes them by asserting facts. It holds no canonical copy.
 
-### Application-owned coordination and configuration
+### Application-owned durable state
 
-The application owns these outright, as ordinary mutable rows in its own database:
-
-- `User` -- identity and authentication;
-- `CampaignMembership` -- role assignment;
-- `Campaign` -- configuration: timezone, roster limits, downtime rules, activation policy;
-- `CharacterCommitment` -- scheduling state and blocking periods;
-- `AdventureOpportunity` -- adventure board entries;
-- `GMAvailabilityWindow` -- published GM capacity;
-- `CallToAdventure` -- expedition coordination records;
-- `ExpeditionParticipant` -- participation records.
+The application owns its identity, configuration, and scheduling records outright, as ordinary mutable rows in its own database. Unlike the transient state below, these must persist; they are not discardable and cannot be rebuilt from the KB.
 
 **The application is operation-focused and is not event-sourced.** It persists current state only. There is no requirement to reconstruct what a GM's availability was three weeks ago, no provenance chain on an adventure opportunity, and no redaction machinery over a commitment's history. Ordinary database persistence is the right tool and paying the event-sourcing cost here would buy nothing.
 
 This asymmetry is the reason the ownership split exists. Data whose history matters lives in the KB. Data that only needs to be correct right now lives here.
 
+A KB-owned entity may reference a user as a plain fact (`Character.ownerUserId` today, and potentially similar fields on app-owned entities later) without the KB owning, validating, or modeling the `User` record itself.
+
 ### Transient technical state
 
-`app-be` also holds state that is not campaign data at all: session implementation details, request correlation ids, short-lived orchestration state, discardable caches, infrastructure telemetry.
+`app-be` also holds state that is not campaign data at all:
+
+- authentication/session implementation details (the session token itself, not the `User` it authenticates);
+- request correlation IDs;
+- short-lived orchestration state;
+- caches that can be discarded and rebuilt;
+- infrastructure telemetry.
 
 ### The rule that replaces "justify all durable state"
 
 Earlier revisions of this document required any durable app-owned state to be specially justified, on the grounds that it risked creating a second source of truth. That framing predates the ownership split and is withdrawn. The rule now:
 
-> The application may own durable state freely, provided it is not world state. Anything in the KB-owned list above must not be copied into an application table.
+> The application may own durable state freely, provided it is not world state. Anything listed as KB-owned in [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) must not be copied into an application table.
 
 ### Redaction and access control
 
@@ -226,7 +218,7 @@ Two mechanisms, and the application is responsible for one of them.
 
 **Redaction** happens only in the KB. It is the resolution of a viewer-specific projection out of a fact history, and it exists to support revisionist history and re-projection. The application never receives KB world knowledge it must hide.
 
-**Access control** is the application's own job for the eight entities it owns. Not returning a `GM_ONLY` adventure opportunity to a player is an authorization check on a query, filtered by the caller's role tier per [ADR 004](adr/004-role-based-permission-tiers.md). It is not redaction and does not involve the KB.
+**Access control** is the application's own job for the entities it owns. Not returning a `GM_ONLY` adventure opportunity to a player is an authorization check on a query, filtered by the caller's role tier per [ADR 004](adr/004-role-based-permission-tiers.md). It is not redaction and does not involve the KB.
 
 Client-side filtering is not a security boundary in either case.
 
@@ -234,7 +226,7 @@ Client-side filtering is not a security boundary in either case.
 
 Application records reference KB entity identifiers, and KB entities may reference application identifiers -- `Character.ownerUserId`, an expedition report's links to its expedition and participants.
 
-The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 003](../adr/003-kb-app-ownership-boundary.md).
 
 ## Character State Authority
 
