@@ -1,11 +1,13 @@
 # Build Plan
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: September 14, 2026
 
 This plan defines the initial delivery sequence for West Wiki. Each milestone should produce a demonstrable vertical slice of the campaign workflow rather than isolated infrastructure work.
 
 ## Milestone 1: Configure Campaign and Manage Characters
+
+> **Tasks scoped to:** [milestone `Phase 1: Configure Campaign and Manage Characters`](https://github.com/west-end-boys/west-wiki/milestone/1) — that is where task status lives. Natural-language interaction for character-management actions is deliberately not yet scoped into an issue; it needs its own planning pass once the underlying commands exist.
 
 Establish the application foundation needed to represent campaign membership, character ownership, character lifecycle, location, commitments, downtime, and derived availability.
 
