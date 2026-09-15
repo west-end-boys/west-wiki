@@ -109,7 +109,9 @@
       "Bash(git ls-tree *)",
       "Bash(echo \"=== exit code: $? \\(empty = no diff\\) ===\")",
       "Bash(git checkout *)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(gh pr create --repo west-end-boys/west-wiki --base main --head deastland --title 'Auth foundation: password hashing, email seam, AuthService, real sessions' --body ' *)",
+      "Bash(git commit *)"
     ],
     "deny": [
       "Read(./.env)",
