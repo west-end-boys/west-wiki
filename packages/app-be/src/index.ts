@@ -18,6 +18,29 @@ export type CharacterLifecycleStatus =
 
 export type ActivationPolicy = "AUTOMATIC" | "GM_APPROVAL";
 
+/**
+ * Never "ANONYMOUS" - per doc/adr/004-role-based-permission-tiers.md,
+ * that tier is the absence of a membership record, not a stored value.
+ */
+export type MembershipRole = "PLAYER" | "GM" | "ADMINISTRATOR";
+
+export type MembershipStatus = "ACTIVE" | "SUSPENDED";
+
+/** Application-owned per doc/adr/002-application-owned-identity-and-scheduling-state.md. */
+export interface User {
+  id: UserId;
+  email: string;
+  createdAt: string;
+}
+
+/** Application-owned per doc/adr/002-application-owned-identity-and-scheduling-state.md. */
+export interface CampaignMembership {
+  userId: UserId;
+  campaignId: CampaignId;
+  role: MembershipRole;
+  status: MembershipStatus;
+}
+
 /** Viewer-safe current projection of campaign configuration. */
 export interface CampaignView {
   id: CampaignId;

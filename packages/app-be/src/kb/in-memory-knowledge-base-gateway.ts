@@ -28,6 +28,12 @@ export interface InMemoryKnowledgeBaseSeed {
  * behavior for application-service tests until the real KB adapter exists.
  */
 export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
+  /**
+   * Not exposed via KnowledgeBaseGateway - Campaign is application-owned
+   * (doc/adr/002-application-owned-identity-and-scheduling-state.md).
+   * Kept privately only to stamp campaignId/gameSystem on newly created
+   * characters; sourcing that from CampaignStore instead is a follow-up.
+   */
   private readonly campaign: CampaignView;
   private readonly characters = new Map<CharacterId, CharacterDetail>();
   private readonly startingLocations: LocationSummary[];
@@ -45,10 +51,6 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
     for (const character of seed.characters ?? []) {
       this.characters.set(character.id, structuredClone(character));
     }
-  }
-
-  async getCampaign(_context: ViewerContext): Promise<CampaignView> {
-    return structuredClone(this.campaign);
   }
 
   async listCharacters(

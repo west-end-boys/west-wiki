@@ -14,6 +14,7 @@ import type {
 import { DomainError } from "../domain/domain-error.js";
 import type { KnowledgeBaseGateway } from "../kb/knowledge-base-gateway.js";
 import { CharacterService } from "../services/character-service.js";
+import type { CampaignStore } from "../store/campaign-store.js";
 import { devViewerContext, requireViewerContext } from "./dev-viewer-context.js";
 import { mapDomainErrorToStatus } from "./error-mapping.js";
 
@@ -29,8 +30,11 @@ function requireCharacterId(req: Request, res: Response): string | undefined {
   return characterId;
 }
 
-export function createServer(kb: KnowledgeBaseGateway): Express {
-  const characterService = new CharacterService(kb);
+export function createServer(
+  kb: KnowledgeBaseGateway,
+  campaignStore: CampaignStore,
+): Express {
+  const characterService = new CharacterService(kb, campaignStore);
   const app = express();
 
   app.use(express.json());
@@ -38,7 +42,15 @@ export function createServer(kb: KnowledgeBaseGateway): Express {
 
   app.get("/campaign", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const campaign = await kb.getCampaign(requireViewerContext(req));
+      requireViewerContext(req);
+      const campaign = await campaignStore.getCampaign();
+      if (!campaign) {
+        res.status(404).json({
+          code: "NOT_FOUND",
+          message: "Campaign was not found.",
+        } satisfies ApiError);
+        return;
+      }
       res.status(200).json(campaign);
     } catch (error) {
       next(error);

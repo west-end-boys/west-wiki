@@ -1,5 +1,6 @@
 import { createServer } from "./http/create-server.js";
 import { InMemoryKnowledgeBaseGateway } from "./kb/in-memory-knowledge-base-gateway.js";
+import { InMemoryCampaignStore } from "./store/in-memory-campaign-store.js";
 import type { CampaignView, CharacterDetail, LocationSummary } from "./index.js";
 
 const campaign: CampaignView = {
@@ -39,8 +40,9 @@ const kb = new InMemoryKnowledgeBaseGateway({
   characters: [tordek],
   startingLocations: [marinsHold],
 });
+const campaignStore = new InMemoryCampaignStore({ campaign });
 
-const app = createServer(kb);
+const app = createServer(kb, campaignStore);
 const port = Number(process.env.PORT ?? 3000);
 
 app.listen(port, () => {

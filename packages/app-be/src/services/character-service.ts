@@ -11,25 +11,29 @@ import type {
   KnowledgeBaseGateway,
   ViewerContext,
 } from "../kb/knowledge-base-gateway.js";
+import type { CampaignStore } from "../store/campaign-store.js";
 
 const RETIREMENT_ELIGIBLE_STATUSES: ReadonlySet<CharacterLifecycleStatus> =
   new Set(["ACTIVE", "MISSING"]);
 
 export class CharacterService {
-  constructor(private readonly kb: KnowledgeBaseGateway) {}
+  constructor(
+    private readonly kb: KnowledgeBaseGateway,
+    private readonly campaignStore: CampaignStore,
+  ) {}
 
   async activateCharacter(
     characterId: CharacterId,
     request: ActivateCharacterRequest,
     context: ViewerContext,
   ): Promise<CharacterCommandResult> {
-    const [campaign, character, ownedCharacters, startingLocations] =
-      await Promise.all([
-        this.kb.getCampaign(context),
+    const [character, ownedCharacters, startingLocations] = await Promise.all(
+      [
         this.kb.getCharacter(characterId, context),
         this.kb.listCharacters(context.userId, context),
         this.kb.listStartingLocations(context),
-      ]);
+      ],
+    );
 
     if (!character) {
       throw new DomainError("NOT_FOUND", "Character was not found.");
@@ -48,6 +52,11 @@ export class CharacterService {
         "Only draft characters may be activated.",
         { lifecycleStatus: character.lifecycleStatus },
       );
+    }
+
+    const campaign = await this.campaignStore.getCampaign();
+    if (!campaign) {
+      throw new DomainError("NOT_FOUND", "Campaign was not found.");
     }
 
     const rosterCount = ownedCharacters.filter(

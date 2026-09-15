@@ -1,5 +1,4 @@
 import type {
-  CampaignView,
   CharacterCommandResult,
   CharacterDetail,
   CharacterId,
@@ -42,8 +41,6 @@ export interface RetireCharacterEventInput {
  * callers never mutate KB records directly.
  */
 export interface KnowledgeBaseGateway {
-  getCampaign(context: ViewerContext): Promise<CampaignView>;
-
   listCharacters(
     ownerUserId: UserId,
     context: ViewerContext,

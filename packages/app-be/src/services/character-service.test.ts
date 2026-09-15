@@ -8,6 +8,7 @@ import type {
 import { DomainError } from "../domain/domain-error.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
 import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import { InMemoryCampaignStore } from "../store/in-memory-campaign-store.js";
 import { CharacterService } from "./character-service.js";
 
 const campaign: CampaignView = {
@@ -35,6 +36,8 @@ const context: ViewerContext = {
   viewerRole: "PLAYER",
 };
 
+const campaignStore = new InMemoryCampaignStore({ campaign });
+
 function character(
   id: string,
   lifecycleStatus: CharacterDetail["lifecycleStatus"],
@@ -61,7 +64,7 @@ describe("CharacterService", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = await service.activateCharacter(
       "tordek",
@@ -89,7 +92,7 @@ describe("CharacterService", () => {
       ],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.activateCharacter(
       "tordek",
@@ -111,7 +114,7 @@ describe("CharacterService", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.activateCharacter(
       "unknown-character",
@@ -132,7 +135,7 @@ describe("CharacterService", () => {
       ],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.activateCharacter(
       "tordek",
@@ -151,7 +154,7 @@ describe("CharacterService", () => {
       characters: [character("tordek", "ACTIVE")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.activateCharacter(
       "tordek",
@@ -178,7 +181,7 @@ describe("CharacterService", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold, forbiddenLocation],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.activateCharacter(
       "tordek",
@@ -195,15 +198,19 @@ describe("CharacterService", () => {
   });
 
   it("rejects standard activation when the campaign requires GM approval", async () => {
+    const gmApprovalCampaign: CampaignView = {
+      ...campaign,
+      characterRules: { ...campaign.characterRules, activationPolicy: "GM_APPROVAL" },
+    };
     const kb = new InMemoryKnowledgeBaseGateway({
-      campaign: {
-        ...campaign,
-        characterRules: { ...campaign.characterRules, activationPolicy: "GM_APPROVAL" },
-      },
+      campaign: gmApprovalCampaign,
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(
+      kb,
+      new InMemoryCampaignStore({ campaign: gmApprovalCampaign }),
+    );
 
     const result = service.activateCharacter(
       "tordek",
@@ -223,7 +230,7 @@ describe("CharacterService", () => {
 describe("CharacterService.createDraftCharacter", () => {
   it("creates a draft character owned by the requesting player", async () => {
     const kb = new InMemoryKnowledgeBaseGateway({ campaign });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = await service.createDraftCharacter(
       { name: "Tordek", gameData: { class: "fighter" } },
@@ -244,7 +251,7 @@ describe("CharacterService.createDraftCharacter", () => {
 
   it("rejects creation with a blank name without writing to the KB", async () => {
     const kb = new InMemoryKnowledgeBaseGateway({ campaign });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.createDraftCharacter({ name: "   " }, context);
 
@@ -261,7 +268,7 @@ describe("CharacterService.retireCharacter", () => {
       characters: [character("tordek", "ACTIVE")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = await service.retireCharacter(
       "tordek",
@@ -288,7 +295,7 @@ describe("CharacterService.retireCharacter", () => {
       characters: [character("kell", "MISSING")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = await service.retireCharacter(
       "kell",
@@ -304,7 +311,7 @@ describe("CharacterService.retireCharacter", () => {
       campaign,
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.retireCharacter(
       "unknown-character",
@@ -325,7 +332,7 @@ describe("CharacterService.retireCharacter", () => {
       ],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.retireCharacter(
       "tordek",
@@ -344,7 +351,7 @@ describe("CharacterService.retireCharacter", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.retireCharacter(
       "tordek",
@@ -366,7 +373,7 @@ describe("CharacterService.retireCharacter", () => {
       characters: [character("tordek", "ACTIVE")],
       startingLocations: [marinsHold],
     });
-    const service = new CharacterService(kb);
+    const service = new CharacterService(kb, campaignStore);
 
     const result = service.retireCharacter(
       "tordek",
