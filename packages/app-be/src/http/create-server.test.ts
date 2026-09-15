@@ -7,6 +7,7 @@ import type {
   LocationSummary,
 } from "../index.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
+import { InMemoryCampaignStore } from "../store/in-memory-campaign-store.js";
 import { createServer } from "./create-server.js";
 
 const campaign: CampaignView = {
@@ -28,6 +29,8 @@ const marinsHold: LocationSummary = {
   name: "Marin's Hold",
   allowsCharacterActivation: true,
 };
+
+const campaignStore = new InMemoryCampaignStore({ campaign });
 
 function character(
   id: string,
@@ -55,7 +58,7 @@ describe("createServer", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const app = createServer(kb);
+    const app = createServer(kb, campaignStore);
 
     const response = await request(app)
       .get("/campaign")
@@ -70,7 +73,7 @@ describe("createServer", () => {
       campaign,
       startingLocations: [marinsHold],
     });
-    const app = createServer(kb);
+    const app = createServer(kb, campaignStore);
 
     const response = await request(app).get("/campaign");
 
@@ -84,7 +87,7 @@ describe("createServer", () => {
       characters: [character("tordek", "DRAFT")],
       startingLocations: [marinsHold],
     });
-    const app = createServer(kb);
+    const app = createServer(kb, campaignStore);
 
     const response = await request(app)
       .post("/characters/tordek/activate")
@@ -106,7 +109,7 @@ describe("createServer", () => {
       ],
       startingLocations: [marinsHold],
     });
-    const app = createServer(kb);
+    const app = createServer(kb, campaignStore);
 
     const response = await request(app)
       .post("/characters/tordek/activate")
@@ -115,5 +118,36 @@ describe("createServer", () => {
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe("ROSTER_LIMIT_REACHED");
+  });
+
+  it("creates a draft character over HTTP", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({ campaign });
+    const app = createServer(kb, campaignStore);
+
+    const response = await request(app)
+      .post("/characters")
+      .set("x-user-id", "player-1")
+      .send({ name: "Tordek" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.character.lifecycleStatus).toBe("DRAFT");
+    expect(response.body.character.ownerUserId).toBe("player-1");
+  });
+
+  it("retires an eligible character over HTTP", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "ACTIVE")],
+      startingLocations: [marinsHold],
+    });
+    const app = createServer(kb, campaignStore);
+
+    const response = await request(app)
+      .post("/characters/tordek/retire")
+      .set("x-user-id", "player-1")
+      .send({ locationId: marinsHold.id });
+
+    expect(response.status).toBe(200);
+    expect(response.body.character.lifecycleStatus).toBe("RETIRED");
   });
 });

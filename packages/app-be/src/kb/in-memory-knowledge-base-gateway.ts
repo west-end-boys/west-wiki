@@ -10,7 +10,9 @@ import type {
 } from "../index.js";
 import type {
   ActivateCharacterEventInput,
+  CreateCharacterEventInput,
   KnowledgeBaseGateway,
+  RetireCharacterEventInput,
   ViewerContext,
 } from "./knowledge-base-gateway.js";
 
@@ -26,12 +28,21 @@ export interface InMemoryKnowledgeBaseSeed {
  * behavior for application-service tests until the real KB adapter exists.
  */
 export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
+  /**
+   * Not exposed via KnowledgeBaseGateway - Campaign is application-owned
+   * (doc/adr/002-application-owned-identity-and-scheduling-state.md).
+   * Kept privately only to stamp campaignId/gameSystem on newly created
+   * characters; sourcing that from CampaignStore instead is a follow-up.
+   */
   private readonly campaign: CampaignView;
   private readonly characters = new Map<CharacterId, CharacterDetail>();
   private readonly startingLocations: LocationSummary[];
   private eventSequence = 0;
+  private characterSequence = 0;
 
   readonly activationWrites: ActivateCharacterEventInput[] = [];
+  readonly creationWrites: CreateCharacterEventInput[] = [];
+  readonly retirementWrites: RetireCharacterEventInput[] = [];
 
   constructor(seed: InMemoryKnowledgeBaseSeed) {
     this.campaign = structuredClone(seed.campaign);
@@ -40,10 +51,6 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
     for (const character of seed.characters ?? []) {
       this.characters.set(character.id, structuredClone(character));
     }
-  }
-
-  async getCampaign(_context: ViewerContext): Promise<CampaignView> {
-    return structuredClone(this.campaign);
   }
 
   async listCharacters(
@@ -92,6 +99,67 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
       lifecycleStatus: "ACTIVE",
       currentLocation: structuredClone(location),
       countsAgainstRosterLimit: true,
+    };
+    this.characters.set(updated.id, updated);
+
+    const eventId = `event-${++this.eventSequence}` as EventId;
+    return {
+      character: structuredClone(updated),
+      eventIds: [eventId],
+    };
+  }
+
+  async recordCharacterCreated(
+    input: CreateCharacterEventInput,
+    _context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    this.creationWrites.push(structuredClone(input));
+
+    const id = `character-${++this.characterSequence}` as CharacterId;
+    const character: CharacterDetail = {
+      id,
+      campaignId: this.campaign.id,
+      ownerUserId: input.ownerUserId,
+      name: input.name,
+      gameSystem: this.campaign.gameSystem,
+      gameData: input.gameData,
+      lifecycleStatus: "DRAFT",
+      countsAgainstRosterLimit: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.characters.set(id, character);
+
+    const eventId = `event-${++this.eventSequence}` as EventId;
+    return {
+      character: structuredClone(character),
+      eventIds: [eventId],
+    };
+  }
+
+  async recordCharacterRetired(
+    input: RetireCharacterEventInput,
+    _context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    const character = this.characters.get(input.characterId);
+    if (!character) {
+      throw new Error(`Unknown character ${input.characterId}`);
+    }
+
+    const location = this.startingLocations.find(
+      (candidate) => candidate.id === input.locationId,
+    );
+    if (!location) {
+      throw new Error(`Unknown location ${input.locationId}`);
+    }
+
+    this.retirementWrites.push(structuredClone(input));
+
+    const updated: CharacterDetail = {
+      ...character,
+      lifecycleStatus: "RETIRED",
+      currentLocation: structuredClone(location),
+      countsAgainstRosterLimit: false,
+      retiredAt: new Date().toISOString(),
     };
     this.characters.set(updated.id, updated);
 

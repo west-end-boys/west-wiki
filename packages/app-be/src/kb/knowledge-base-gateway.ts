@@ -1,5 +1,4 @@
 import type {
-  CampaignView,
   CharacterCommandResult,
   CharacterDetail,
   CharacterId,
@@ -23,6 +22,18 @@ export interface ActivateCharacterEventInput {
   startingLocationId: LocationId;
 }
 
+export interface CreateCharacterEventInput {
+  name: string;
+  gameData: Record<string, unknown>;
+  ownerUserId: UserId;
+}
+
+export interface RetireCharacterEventInput {
+  characterId: CharacterId;
+  locationId: LocationId;
+  narrative?: string;
+}
+
 /**
  * Application-facing seam to the event-sourced knowledge base.
  *
@@ -30,8 +41,6 @@ export interface ActivateCharacterEventInput {
  * callers never mutate KB records directly.
  */
 export interface KnowledgeBaseGateway {
-  getCampaign(context: ViewerContext): Promise<CampaignView>;
-
   listCharacters(
     ownerUserId: UserId,
     context: ViewerContext,
@@ -46,6 +55,16 @@ export interface KnowledgeBaseGateway {
 
   recordCharacterActivated(
     input: ActivateCharacterEventInput,
+    context: ActorContext,
+  ): Promise<CharacterCommandResult>;
+
+  recordCharacterCreated(
+    input: CreateCharacterEventInput,
+    context: ActorContext,
+  ): Promise<CharacterCommandResult>;
+
+  recordCharacterRetired(
+    input: RetireCharacterEventInput,
     context: ActorContext,
   ): Promise<CharacterCommandResult>;
 }
