@@ -1,7 +1,7 @@
 # Application Architecture
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: September 14, 2026
 
 ## Scope
 
@@ -171,33 +171,37 @@ Retains/submits reports according to the KB contract, requests structured propos
 
 ### KB-owned authoritative state
 
-The KB event log is authoritative for campaign assets and their histories, including current state derived from those histories.
+The KB event log is authoritative for campaign world/narrative assets and their histories,
+including current state derived from those histories.
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth
+for which entities this covers - see that document rather than a restated list here.
 
-Examples include:
+### Application-owned durable state
 
-- Campaign configuration represented as campaign facts/events;
-- Characters and game data;
-- lifecycle state;
-- current location;
-- commitments;
-- locations;
-- GM availability;
-- Calls to Adventure and expeditions;
-- participation;
-- campaign facts and wiki knowledge;
-- provenance, corrections, and retractions.
+`doc/contract/KB-PROJECTIONS.md`'s ownership table also names entities `app-be` owns directly
+rather than sourcing from the KB.
+[ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) records why the split
+falls where it does: KB ownership earns its keep where retraction and provenance matter
+(narrative/world facts); identity and scheduling state don't need that model. Unlike the
+transient/operational state below, these records must persist; they are not discardable or
+rebuildable from the KB.
+
+A KB-owned entity may reference a user as a plain fact (`Character.ownerUserId` today, and
+potentially similar fields on app-owned entities later) without the KB owning, validating, or
+modeling the `User` record itself.
 
 ### Application-owned transient/operational state
 
-`app-be` may own transient technical state that is not canonical campaign state, such as:
+`app-be` may also own transient technical state that is not canonical campaign state, such as:
 
-- authentication/session implementation details;
+- authentication/session implementation details (the session token itself, not the `User` it authenticates);
 - request correlation IDs;
 - short-lived orchestration state;
 - caches that can be discarded and rebuilt;
 - infrastructure telemetry.
 
-Any durable app-owned state must be explicitly justified so that a second source of truth is not created accidentally.
+Any durable app-owned state beyond the entities named above must be explicitly justified so that a
+second source of truth is not created accidentally.
 
 ## Character State Authority
 

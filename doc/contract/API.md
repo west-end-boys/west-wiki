@@ -1,7 +1,7 @@
 # API Contract
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: September 14, 2026
 
 ## Purpose
 
@@ -49,7 +49,14 @@ The application API does not expose arbitrary persistence mutation.
 
 ### The KB event log is authoritative
 
-The application backend does not own mutable canonical Character, Location, Campaign, Expedition, or similar campaign-state records.
+The application backend does not own the KB-owned entities listed in
+[`doc/contract/KB-PROJECTIONS.md`](KB-PROJECTIONS.md)'s ownership table (`Character`, `Location`,
+and similar). That same table also names several entities `app-be` owns directly instead of
+sourcing from the KB - identity/role state (`User`, `Campaign`, `CampaignMembership`) and
+scheduling state (`CharacterCommitment`, `AdventureOpportunity`, `GMAvailabilityWindow`,
+`CallToAdventure`, `ExpeditionParticipant`). See
+[`doc/adr/002-application-owned-identity-and-scheduling-state.md`](../adr/002-application-owned-identity-and-scheduling-state.md)
+for why the split falls where it does.
 
 For reads:
 
