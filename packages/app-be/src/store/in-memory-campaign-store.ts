@@ -25,6 +25,7 @@ export interface InMemoryCampaignStoreSeed {
 export class InMemoryCampaignStore implements CampaignStore {
   private campaign: CampaignView | null;
   private readonly users = new Map<UserId, User>();
+  private readonly passwordHashes = new Map<UserId, string>();
   private readonly memberships = new Map<string, CampaignMembership>();
   private campaignSequence = 0;
   private userSequence = 0;
@@ -62,12 +63,24 @@ export class InMemoryCampaignStore implements CampaignStore {
       createdAt: new Date().toISOString(),
     };
     this.users.set(id, user);
+    this.passwordHashes.set(id, input.passwordHash);
     return structuredClone(user);
   }
 
   async getUser(userId: UserId): Promise<User | null> {
     const user = this.users.get(userId);
     return user ? structuredClone(user) : null;
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const user = [...this.users.values()].find(
+      (candidate) => candidate.email === email,
+    );
+    return user ? structuredClone(user) : null;
+  }
+
+  async getPasswordHash(userId: UserId): Promise<string | null> {
+    return this.passwordHashes.get(userId) ?? null;
   }
 
   async createMembership(

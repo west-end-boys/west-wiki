@@ -41,6 +41,28 @@ export interface CampaignMembership {
   status: MembershipStatus;
 }
 
+/** Command input: GM/Administrator-assisted account creation (ADR 005's MVP interim path). */
+export interface CreateAccountRequest {
+  email: string;
+  password: string;
+  role: MembershipRole;
+}
+
+export interface CreateAccountResult {
+  user: User;
+  membership: CampaignMembership;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResult {
+  sessionId: string;
+  userId: UserId;
+}
+
 /** Viewer-safe current projection of campaign configuration. */
 export interface CampaignView {
   id: CampaignId;
@@ -132,6 +154,7 @@ export interface CharacterAvailability {
 export type ApiErrorCode =
   | "INVALID_REQUEST"
   | "UNAUTHENTICATED"
+  | "INVALID_CREDENTIALS"
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "ROSTER_LIMIT_REACHED"

@@ -17,6 +17,7 @@ export interface CreateCampaignInput {
 
 export interface CreateUserInput {
   email: string;
+  passwordHash: string;
 }
 
 export interface CreateMembershipInput {
@@ -41,6 +42,10 @@ export interface CampaignStore {
 
   createUser(input: CreateUserInput): Promise<User>;
   getUser(userId: UserId): Promise<User | null>;
+  getUserByEmail(email: string): Promise<User | null>;
+
+  /** Never exposed on the public User projection - AuthService-only. */
+  getPasswordHash(userId: UserId): Promise<string | null>;
 
   createMembership(input: CreateMembershipInput): Promise<CampaignMembership>;
   getMembership(

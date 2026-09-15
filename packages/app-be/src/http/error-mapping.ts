@@ -3,6 +3,7 @@ import type { ApiErrorCode } from "../index.js";
 const STATUS_BY_ERROR_CODE: Record<ApiErrorCode, number> = {
   INVALID_REQUEST: 400,
   UNAUTHENTICATED: 401,
+  INVALID_CREDENTIALS: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   ROSTER_LIMIT_REACHED: 409,
