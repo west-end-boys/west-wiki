@@ -14,8 +14,10 @@
 /doc/kb/                @benjaminbradley
 
 # Application layer
-/packages/app/          @deastland0423
-/doc/app/               @deastland0423
+/packages/app-be/       @deastland0423
+/packages/app-fe/       @deastland0423
+/doc/app-be/            @deastland0423
+/doc/app-fe/            @deastland0423
 
 # The seam. Both owners required -- do not narrow these.
 /packages/contract/     @benjaminbradley @deastland0423

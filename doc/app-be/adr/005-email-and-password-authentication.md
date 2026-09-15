@@ -11,7 +11,7 @@ of developers or hobbyists comfortable with third-party sign-in flows. Requiring
 players won't have one, and "sign in with X" redirect flows are a real point of confusion for less
 technical users.
 
-Separately, `doc/app/REQUIREMENTS.md`'s Notification Requirements already commit the application to
+Separately, `doc/app-be/REQUIREMENTS.md`'s Notification Requirements already commit the application to
 sending email regardless of how login works: Call to Adventure notices, a periodic recap
 newsletter, and GM/Administrator announcements all require a transactional email capability. That
 removes the strongest argument against building password-based auth - that it would require
@@ -37,7 +37,7 @@ guidance directly.
 ### Account verification and password recovery use the shared email-delivery capability
 
 Signup verification and forgot-password flows send email through the same transactional email
-infrastructure the notification system requires anyway (`doc/app/REQUIREMENTS.md` Notification
+infrastructure the notification system requires anyway (`doc/app-be/REQUIREMENTS.md` Notification
 Requirements) - not a separate, auth-specific integration.
 
 ### GM/Administrator-assisted account creation is an acceptable interim path
@@ -73,11 +73,11 @@ replaced with.
 ## Open Questions
 
 - Which transactional email provider? Not core to the auth model itself - deferred to an
-  implementation-level decision (`doc/app/ARCHITECTURE.md` or a dedicated task) rather than this
+  implementation-level decision (`doc/app-be/ARCHITECTURE.md` or a dedicated task) rather than this
   ADR.
 - Should self-service signup be open to anyone with a valid invite, or remain GM/Administrator-
   created indefinitely? Leaning toward invite-gated given the "private" framing in
-  `doc/app/REQUIREMENTS.md`, but not decided.
+  `doc/app-be/REQUIREMENTS.md`, but not decided.
 - Should sessions support a long-lived "remember me" option to reduce repeated-login friction for
   less technical players, and if so, for how long?
 
@@ -89,8 +89,8 @@ audience is 50+ people of wildly varying technical comfort.
 
 ## References
 
-- `doc/app/REQUIREMENTS.md` - Actors section, Notification Requirements
-- `doc/app/adr/004-role-based-permission-tiers.md` - the role model that a real login enables
+- `doc/app-be/REQUIREMENTS.md` - Actors section, Notification Requirements
+- `doc/app-be/adr/004-role-based-permission-tiers.md` - the role model that a real login enables
   enforcing for real
 - `.autocode/core/principles/best-practices.md` - Security section (secrets, sessions, auth)
 - `packages/app-be/src/http/dev-viewer-context.ts` - the temporary stand-in this decision will

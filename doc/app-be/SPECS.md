@@ -1,11 +1,13 @@
 # Application Specifications
 
 Status: Draft  
-Last updated: August 25, 2026
+Last updated: September 15, 2026
 
 ## Purpose
 
 This document records application-internal models and workflow semantics for West Wiki. Shared KB/app API contracts belong in [`doc/contract/API.md`](../contract/API.md) and [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), not here.
+
+The entities in this document are application-owned current-state records held in an ordinary database. They are not event-sourced and carry no provenance chain -- see [ADR 002](../adr/002-kb-app-ownership-boundary.md). Entities the KB owns are listed under "KB-owned entities" below and are consumed as projections.
 
 ## Initial Domain Model
 
@@ -35,10 +37,12 @@ Possible attributes:
 
 - `userId`
 - `campaignId`
-- `isPlayer`
-- `isGM`
-- `isAdministrator`
+- `role` -- `PLAYER`, `GM`, or `ADMINISTRATOR`
 - `status`
+
+`role` is a single rank, not a set of independent flags: each tier includes every capability and all visibility of the tiers below it, so `ADMINISTRATOR` implies `GM` implies `PLAYER`. `ANONYMOUS` is the absence of a membership record and is never stored. Authorization compares rank against a required minimum tier rather than testing for a role by name. Role is scoped to a single campaign. See [ADR 004](adr/004-role-based-permission-tiers.md).
+
+`status` and `role` are independent: status says whether a membership is currently in force, role says what tier it grants when it is.
 
 ### CharacterCommitment
 
@@ -77,6 +81,8 @@ Initial downtime statuses:
 - `ENDED_EARLY`
 
 ### AdventureOpportunity
+
+Visibility on this entity is enforced by application access control -- filtering rows by the caller's role tier at query time -- not by KB redaction. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
 
 Possible attributes:
 
@@ -146,9 +152,8 @@ workflows below reference them but do not restate them.
    - selected location allows character activation;
    - the campaign's `characterRules.activationPolicy` is `AUTOMATIC`.
 4. Standard activation succeeds automatically.
-5. Character transitions `DRAFT -> ACTIVE`.
-6. `currentLocation` is set to the selected location's projection.
-7. The transition is audited.
+5. The application asserts the lifecycle change and the starting location to the KB. It does not update a Character row -- there is none. The next Character projection reflects `ACTIVE` and the selected location.
+6. The assertion carries the application workflow as its source, and is audited.
 
 Exceptional starting-location requests, or campaigns configured for `GM_APPROVAL`, may enter a GM-approval path.
 
@@ -158,9 +163,9 @@ Exceptional starting-location requests, or campaigns configured for `GM_APPROVAL
 2. Request includes a retirement location and may include narrative intentions/resources.
 3. Application validates the action.
 4. Optional campaign/game-system retirement resolver determines additional consequences.
-5. Character transitions to `RETIRED`.
-6. Retirement location and complete character history remain preserved.
-7. Application initiates or records linkage to a persistent world-facing Person/NPC identity.
+5. The application asserts the retirement to the KB; the projection then reports `RETIRED`.
+6. Retirement location and complete character history remain preserved in the log.
+7. No linkage to a separate Person/NPC record is needed. The KB entity was always the person, and it persists beyond play -- the application's playable-character concern simply ends. See [ADR 002 (app)](adr/002-character-lifecycle-and-retirement.md) and [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md).
 8. Character no longer counts against roster limits.
 9. Player cannot normally reverse retirement; GM/Admin override is exceptional and audited.
 
@@ -171,7 +176,7 @@ Exceptional starting-location requests, or campaigns configured for `GM_APPROVAL
 3. Game-system/campaign resolver determines duration and required consequences.
 4. Application creates a blocking travel commitment.
 5. While the commitment overlaps a date, the character is unavailable for conflicting expeditions.
-6. On successful resolution, authoritative current location changes to the destination.
+6. On successful resolution, the application asserts the new location to the KB. The application computes the duration and decides when the period has elapsed; the KB records what it is told.
 7. Action and resulting state change remain auditable.
 
 ## Downtime Scheduling Semantics
@@ -232,6 +237,8 @@ At minimum, an expedition eligibility check evaluates:
 
 A commitment ending on date X blocks through the end of X. Availability resumes on X+1 day unless another condition blocks it.
 
+Day boundaries are measured in the campaign's configured timezone (`Campaign.timezone`), not the server's or the caller's.
+
 ## GM Availability Workflow
 
 1. GM enters availability through form or natural language.
@@ -264,13 +271,17 @@ Exactly when a provisional call should create the blocking expedition commitment
 ## Report Processing Workflow
 
 1. Player or GM submits natural-language session notes.
-2. Original report is persisted unchanged.
-3. LLM extracts proposed structured entities/changes.
+2. The original report is persisted unchanged, as a KB-owned `ExpeditionReport`.
+3. LLM extracts structured changes from the report.
 4. Application validates permissions, entity references, and domain constraints.
-5. GM reviews proposals.
-6. Accepted canonical changes cross the shared KB/app contract.
+5. Valid extractions are asserted to the KB as `RUMOR`, attributed to the submitting human, with the LLM's involvement noted. There is no approval gate here.
+6. A GM may later promote a rumor to `CANON` by asserting it, contradict it, or retract it. This is ongoing curation, not a step in report submission.
 7. Player-safe recap may be generated/published.
-8. Provenance remains linked to report and approving GM.
+8. Provenance remains linked to the report and, where canon was asserted, to the GM who asserted it.
+
+Steps 5 and 6 reflect a trust-but-verify posture: contributions are recorded rather than queued, and the tracked history is what makes that safe. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
+
+Players asserting facts about their own characters, and recording world claims as rumors, do not pass through this workflow at all. Whether the GM's promotion queue is a KB `ProposedChange` entity or a view over rumor-tagged facts is still open.
 
 ## Natural-Language Intents
 

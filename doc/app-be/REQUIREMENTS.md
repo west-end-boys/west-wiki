@@ -1,7 +1,7 @@
 # Application Requirements
 
 Status: Draft  
-Last updated: September 14, 2026
+Last updated: September 15, 2026
 
 ## Purpose
 
@@ -19,16 +19,19 @@ West Wiki is a private, LLM-assisted campaign management application for a West 
 - Keep campaign time synchronized with real-world time.
 - Keep the application game-system-flexible, with Shadowdark as the first supported system.
 
-## Non-Goals for the Initial Release
+## Out of Scope for the Initial Release
 
-- Fully autonomous world simulation.
-- Exact geographic pathfinding.
-- Universal support for every RPG system.
-- Public multi-tenant hosting.
-- Character-specific knowledge modeling.
-- Fully automated acceptance of LLM-generated changes.
-- Universal world-building ontology.
-- Local or offline LLM support.
+Not priorities for the first release, rather than permanent exclusions. Where a direction is deliberately left open it is noted.
+
+- **Fully autonomous world simulation.**
+- **Exact geographic pathfinding.** An opportunity names a required departure location; the character must already be there unless a travel workflow moves them.
+- **Universal support for every RPG system.** Shadowdark is first; the generic action, time, and commitment model is built so others can follow.
+- **Public multi-tenant hosting.** This shapes the campaign-creation bootstrap rule in [ADR 004](adr/004-role-based-permission-tiers.md).
+- **Character-specific knowledge modeling** -- what a given character knows, as distinct from what a player may see.
+- **Fully automated acceptance of LLM-generated changes.** The LLM is never an authorized author and this is not expected to change.
+- **Universal world-building ontology.** A longer-term ambition of the KB layer, not an initial deliverable.
+- **Local or offline LLM support.**
+- **Self-service signup and password reset.** Accounts are GM- or Administrator-created for the initial build; see [ADR 005](adr/005-email-and-password-authentication.md).
 
 ## Core Principles
 
@@ -46,6 +49,8 @@ See [ADR 001](adr/001-campaign-state-changes-through-actions.md).
 
 Campaign dates correspond directly to real-world dates. A commitment covering two weeks of campaign time also makes the character unavailable for two weeks of real-world time.
 
+Day boundaries are measured in the campaign's configured timezone.
+
 ### Availability is derived
 
 Character availability is calculated for a specific date or date range from lifecycle state, location, commitments, expedition participation, and travel feasibility. Availability is never a manually editable Boolean.
@@ -58,9 +63,9 @@ GMs declare when and where they are available to run games. Players choose adven
 
 The LLM may interpret requests and suggest structured operations, but it cannot bypass authorization, domain validation, confirmation requirements, or persistence rules.
 
-### GMs control canon
+### GMs control canon; players contribute rumors
 
-Player submissions may propose facts, corrections, rumors, and updates. Canonical world-state changes require authorized GM acceptance.
+A player has direct authority over their own characters and may assert facts about them without moderation. Claims a player makes about the *world* are recorded immediately but carry a `RUMOR` veracity qualifier -- attributed, preserved, and not authoritative. A GM makes something canon by asserting it. See [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
 
 ### Accepted changes retain provenance
 
@@ -110,7 +115,7 @@ Can:
 - configure system integrations and LLM settings;
 - correct or override authoritative character state when necessary.
 
-Roles may overlap.
+The four actors form a strict, ordered hierarchy -- `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR` -- in which each tier holds every capability and all visibility of the tiers below it. A person holds one tier per campaign, not a set of independent flags, and one person commonly holds the top tier while also playing a character. [ADR 004](adr/004-role-based-permission-tiers.md) is authoritative for the role model; the capability lists above describe what each tier adds.
 
 ## Character Requirements
 
@@ -196,10 +201,9 @@ email should use the same delivery capability rather than a separate mechanism.
 
 - Post-session reports may be submitted in natural language.
 - The original human submission is retained unchanged.
-- The LLM may extract proposed entities and campaign changes.
-- The application validates proposed changes before GM review.
-- A GM accepts or rejects canonical changes.
-- Accepted changes preserve provenance and visibility metadata.
+- The LLM may extract structured changes from a report; these are recorded directly as unverified (`RUMOR`) under the submitting human's authorship, without an approval gate.
+- A GM promotes a claim to canon by asserting it, or contradicts or retracts it. Curation is continuous rather than a gate on submission.
+- Accepted changes preserve provenance, visibility, and veracity metadata.
 - Corrections and retractions should preserve history rather than silently overwrite sources.
 
 ## Visibility Requirements
@@ -210,7 +214,9 @@ Initial campaign-knowledge visibility levels are:
 - `CAMPAIGN` - visible to authenticated campaign members;
 - `GM_ONLY` - visible only to authorized GMs.
 
-The application must never rely on client-side filtering to protect GM-only knowledge received from the KB layer.
+The application must never rely on client-side filtering to protect GM-only content.
+
+Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
 
 ## Natural-Language Interaction Requirements
 

@@ -1,15 +1,17 @@
 # API Contract
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: September 15, 2026
 
 ## Purpose
 
 This document defines the conventions for the HTTP API exposed by `packages/app-be` and its interaction with the event-sourced Knowledge Base (KB).
 
-The KB event log is the source of truth for campaign state. The application backend exposes viewer-safe projections for reads and explicit domain commands for writes.
+The KB event log is the source of truth for campaign **world** state. The application backend exposes viewer-safe projections of that state for reads, and explicit domain commands for writes.
 
-See `doc/adr/001-event-sourced-fact-store.md`.
+The application also owns coordination and configuration records of its own -- Campaign, memberships, commitments, opportunities, GM availability, calls to adventure, participation -- held as ordinary current-state rows rather than projected from the KB. Which entity belongs to which layer is settled in [ADR 002](../adr/002-kb-app-ownership-boundary.md) and tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md).
+
+See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-kb-app-ownership-boundary.md), and [ADR 003](../adr/003-fact-model-veracity-and-visibility.md).
 
 ## Contract Philosophy
 
@@ -47,9 +49,13 @@ The convention is:
 
 The application API does not expose arbitrary persistence mutation.
 
-### The KB event log is authoritative
+### The KB event log is authoritative for world state
 
-The application backend does not own mutable canonical Character, Location, Campaign, Expedition, or similar campaign-state records.
+The application backend does not own mutable canonical records for the entities the KB owns: Character, Region, Location, GM regional authorization, expedition reports, and campaign world knowledge. Those are read as projections and changed only by recording facts.
+
+The application *does* own its own coordination and configuration records, including Campaign, CampaignMembership, CharacterCommitment, AdventureOpportunity, GMAvailabilityWindow, CallToAdventure, and ExpeditionParticipant. These are conventional mutable rows. They have no history requirement, no provenance requirement, and no redaction requirement, and paying the event-sourcing cost for them would buy nothing. See [ADR 002](../adr/002-kb-app-ownership-boundary.md).
+
+Reads of app-owned records are ordinary authorized queries. The remainder of this section describes reads and writes that cross the KB boundary.
 
 For reads:
 
@@ -124,20 +130,28 @@ Contract types are designed for client use cases. They represent current viewer-
 
 Raw KB event shapes do not leak through the public application API unless a dedicated history/provenance use case explicitly requires them.
 
-### Knowledge redaction occurs in the KB
+### Knowledge redaction occurs in the KB; access control is the app's own job
 
-Viewer context is part of every relevant KB read. GM-only content must be filtered by the KB before it reaches `app-be` or the frontend.
+These are two mechanisms and the difference matters.
 
-Client-side filtering is never a security boundary.
+**Redaction** is the KB resolving a viewer-specific projection out of a fact history. Viewer context is part of every relevant KB read, and GM-only world knowledge is filtered by the KB before it reaches `app-be` or the frontend. Under the hybrid visibility rule ([ADR 003](../adr/003-fact-model-veracity-and-visibility.md)) a redacted entry still projects its effect: the viewer learns that something changed and what the resulting value is, without the cause or the provenance.
+
+**Access control** is `app-be` filtering its own current-state rows by the caller's role tier -- not returning a `GM_ONLY` adventure opportunity to a player. That is an ordinary authorization check on a query, and it is the application's responsibility for the eight entities it owns.
+
+Viewer roles are the tiers defined in [ADR 004](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`. A protected read or command declares the minimum tier it requires.
+
+Client-side filtering is never a security boundary in either layer.
 
 ## Contract Locations
 
-The application HTTP contract currently lives under `packages/app-be`.
+Two contracts exist and they are not the same thing.
+
+**The application HTTP contract** -- what `app-fe` and other clients call -- currently lives under `packages/app-be`:
 
 - TypeScript contract types: `packages/app-be/src/index.ts`
-- OpenAPI description: `packages/app-be/openapi.yaml`
+- OpenAPI description: not yet written.
 
-The KB/app boundary is a separate contract concern. Entity ownership and the shape of the projections the KB provides to `app-be` are documented in [`doc/contract/KB-PROJECTIONS.md`](KB-PROJECTIONS.md).
+**The KB/app boundary** is a separate contract concern. `doc/REPO-STRUCTURE.md` designates `packages/contract` as its home; that package does not exist yet, and the boundary is currently expressed by `packages/app-be/src/kb/knowledge-base-gateway.ts` as a client-side interface. Moving it into `packages/contract` is outstanding work, not a decision to revisit. Entity ownership and the shape of the projections the KB provides to `app-be` are documented in [`doc/contract/KB-PROJECTIONS.md`](KB-PROJECTIONS.md).
 
 ## Initial Slice
 
@@ -145,7 +159,7 @@ The first slice proves campaign and character management through the event-sourc
 
 It should allow a player to:
 
-1. read the current Campaign projection;
+1. read current Campaign configuration;
 2. list owned Character projections;
 3. read a Character projection;
 4. create a draft character through a command/event;
@@ -169,6 +183,8 @@ GET  /characters/{characterId}/availability?date=YYYY-MM-DD
 POST /characters/{characterId}/retire
 ```
 
+`GET /campaign` returns application-owned configuration, not a KB projection. It appears in this slice because character validation depends on it.
+
 `Region` is intentionally not part of this initial contract. A character has a `Location` once active. Region may be introduced when adventure opportunities, geographic Call-to-Adventure eligibility, and GM regional authorization require it.
 
 ## Initial Shared Types
@@ -176,7 +192,7 @@ POST /characters/{characterId}/retire
 The executable app contract should define at least:
 
 - stable IDs for Campaign, User, Character, Location, and Commitment;
-- ISO local-date representation;
+- ISO local-date representation, interpreted in the campaign's configured timezone -- see Time below;
 - Character lifecycle states;
 - Campaign, Character, and Location projection DTOs;
 - character create/edit command requests;
@@ -184,6 +200,12 @@ The executable app contract should define at least:
 - retirement command request/result;
 - availability result and reason codes;
 - standard API/domain error shape.
+
+## Time
+
+Campaign dates are interpreted in the campaign's configured timezone (`Campaign.timezone`), not the server's and not the caller's. That timezone decides when a day boundary falls, and therefore when a scheduled commitment becomes active, when an active one completes, and which day an availability query is asking about.
+
+`LocalDate` values on the wire are timezone-free `YYYY-MM-DD`. Resolving one to an instant is always done against the campaign timezone.
 
 ## Error Semantics
 

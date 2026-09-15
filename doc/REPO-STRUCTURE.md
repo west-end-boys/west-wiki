@@ -16,7 +16,13 @@ Two developers, one API boundary, no external consumers yet.
   repo is never in a state where the two apps disagree.
 - No version negotiation between two people who talk to each other daily.
 
-**The cost:** the boundary is enforced by convention and review, not by a repo wall. If we find
+### Current state of the layout
+
+The tree above is the target. What exists today: `packages/app-be` only, with the KB/app seam expressed as a client-side interface at `packages/app-be/src/kb/knowledge-base-gateway.ts` rather than a shared `packages/contract`. `doc/ARCHITECTURE.md` and `doc/kb/ARCHITECTURE.md` / `doc/kb/SPECS.md` are not written. `doc/app-fe/` has no documents yet; the application-layer documents under `doc/app-be/` currently carry product-level requirements that span both application packages.
+
+### The cost
+
+The boundary is enforced by convention and review, not by a repo wall. If we find
 ourselves reaching across the boundary instead of through the contract, that is the signal to split.
 Revisit if it happens twice.
 
@@ -36,9 +42,9 @@ packages/
 doc/
   REPO-STRUCTURE.md      This file. Layout, ownership, document map.
   DEVELOPMENT.md         Dev environment setup, git hooks, local workflow.
-  BUILD-PLAN.md          Phase plan. Frozen after approval, links to milestone.
+  BUILD-PLAN.md          Phase plan, two tracks. Iterated as work proceeds.
   LESSONS.md             Reflection triage.
-  ARCHITECTURE.md        System level: the three layers, boundaries, deployment.
+  ARCHITECTURE.md        System level: the three layers, boundaries, deployment. NOT YET WRITTEN.
   adr/                   System + contract decisions.
   contract/
     API.md               Normative prose for the KB/app-be boundary. Points at packages/contract.
@@ -73,7 +79,7 @@ doc/
 types rather than prose. The compiler enforces agreement; discipline does not have to.
 
 **The contract does not live in either app's `SPECS.md`.** `doc/kb/SPECS.md` covers KB internals and
-`doc/app/SPECS.md` covers app internals. Putting the wire contract in either one means copying it
+`doc/app-be/SPECS.md` covers app internals. Putting the wire contract in either one means copying it
 into the other, and the copies diverge. `doc/contract/API.md` holds the normative prose and
 references the types; it never restates them.
 
@@ -82,8 +88,14 @@ that matter (a GM view and a player view of the same facts, a retraction, a reca
 value). Both sides test against the same fixtures, which is what lets the two of us work
 independently without blocking on each other.
 
-**Redaction is part of the contract.** Viewer role is a parameter of every read, resolved on the KB
-side. The app never receives content it must hide. A client-side filter is a data leak.
+**Redaction is part of the contract.** Viewer role is a parameter of every KB read, resolved on the
+KB side. The app never receives KB world knowledge it must hide.
+
+This is specifically about KB-owned world state. The application owns eight coordination and
+configuration entities of its own (see [ADR 002](adr/002-kb-app-ownership-boundary.md)) and is
+responsible for authorizing queries against those itself, filtering by the caller's role tier. That
+is access control, not redaction, and it does not involve the KB. A client-side filter is a data
+leak in either case.
 
 ---
 
@@ -95,12 +107,16 @@ Three scopes, one file per decision, append-only by new file so concurrent ADRs 
 |---|---|
 | `doc/adr/` | System-wide and contract decisions -- anything affecting both apps or the boundary |
 | `doc/kb/adr/` | Decisions internal to the KB layer |
-| `doc/app/adr/` | Decisions internal to the application layer |
+| `doc/app-be/adr/` | Decisions internal to the application layer |
 
 Naming: `NNN-short-title.md`, numbered per directory.
 
 A decision belongs in `doc/adr/` if reversing it would require changes on both sides of the
 boundary.
+
+An accepted ADR is not rewritten when circumstances change. Add a new ADR that supersedes it, or --
+for a narrowing that does not reverse the decision -- an "Amendments" section at the end of the
+existing file.
 
 ---
 
@@ -120,6 +136,7 @@ determines whose review is required.
 | `doc/app-be/**`, `packages/app-be/**` | deastland0423 | per task |
 | `doc/app-fe/**`, `packages/app-fe/**` | deastland0423 | per task |
 | `doc/BUILD-PLAN.md` | joint | per phase |
+| `doc/app-be/**` product-level requirements | joint | rare |
 | `doc/LESSONS.md` | either | as reflected |
 
 ---

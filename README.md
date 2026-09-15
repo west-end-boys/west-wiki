@@ -16,7 +16,7 @@ See [`doc/REPO-STRUCTURE.md`](doc/REPO-STRUCTURE.md) for the repository layout, 
 boundary, document ownership, and how this project maps onto the autocode workflow. That document is
 the map -- start there rather than browsing directories.
 
-MVP scope lives in [`doc/app/REQUIREMENTS.md`](doc/app/REQUIREMENTS.md), not here. Scope changes far
+MVP scope lives in [`doc/app-be/REQUIREMENTS.md`](doc/app-be/REQUIREMENTS.md), not here. Scope changes far
 faster than mission does, so the two are kept apart.
 
 Development process lives in `.autocode/`. Task status lives in GitHub issues, not in this repo.

@@ -125,11 +125,29 @@ Concretely:
 
 ---
 
+## Amendments
+
+**2026-09-15.** Two of this ADR's open questions and one of its stated requirements have moved.
+
+- **Requirement 2, retraction at any granularity.** Sub-sentence and implied-fact retraction is now
+  explicitly out of scope for the initial release (`doc/kb/REQUIREMENTS.md`). The event model still
+  supports it; the review UI is what is deferred. The decision below is unchanged, but note that
+  requirement 3 — derived-value recomputation from a corrected sequence — is now doing most of the
+  work of ruling out a mutable store.
+- **Open question 1, event schema versioning**, is carried forward to
+  `doc/adr/003-fact-model-veracity-and-visibility.md` as fact-type versioning, and is still open.
+- **Open question 3, partial retraction UX**, is resolved as deferred per the first bullet.
+
+`doc/adr/002-kb-app-ownership-boundary.md` scopes which entities this store is responsible for, and
+`doc/adr/003-fact-model-veracity-and-visibility.md` defines the entry structure this ADR left open.
+
 ## References
 
 - `doc/REPO-STRUCTURE.md` — contract boundary, redaction policy, ADR scope rules
-- `doc/kb/REQUIREMENTS.md` — KB-layer requirements (to be written; see GitHub issue)
-- `doc/contract/API.md` — normative boundary spec (to be written; see GitHub issue)
+- `doc/adr/002-kb-app-ownership-boundary.md` — entity ownership, trust model, KB as a service
+- `doc/adr/003-fact-model-veracity-and-visibility.md` — entry kinds, registry, veracity, visibility
+- `doc/kb/REQUIREMENTS.md` — KB-layer requirements
+- `doc/contract/API.md` — normative boundary spec
 - HANDOFF.md blocker 3 — "event sourcing is decided-by-implication but not decided-explicitly"
 - Google Doc: "Living LLM Wiki" — original requirements including retraction, provenance, derived
   values

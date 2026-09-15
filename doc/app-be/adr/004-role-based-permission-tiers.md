@@ -5,9 +5,9 @@ Date: September 14, 2026
 
 ## Context
 
-West Wiki needs a permission model for four actors already named in `doc/app/REQUIREMENTS.md`:
+West Wiki needs a permission model for four actors already named in `doc/app-be/REQUIREMENTS.md`:
 Anonymous Visitor, Player, GM, and Administrator. That document notes "roles may overlap" but does
-not say how. `doc/app/SPECS.md` models `CampaignMembership` as three independent booleans
+not say how. `doc/app-be/SPECS.md` models `CampaignMembership` as three independent booleans
 (`isPlayer`, `isGM`, `isAdministrator`), which permits combinations the campaign doesn't actually
 use (a GM who isn't a Player, an Administrator who isn't a GM) and disagrees with the code: the
 existing `ViewerContext.viewerRole` in `packages/app-be/src/kb/knowledge-base-gateway.ts` is
@@ -35,7 +35,7 @@ without also holding every lower tier's.
 ### CampaignMembership carries a single role, not independent flags
 
 `CampaignMembership.role: "PLAYER" | "GM" | "ADMINISTRATOR"` replaces the three independent
-booleans (`isPlayer`/`isGM`/`isAdministrator`) previously documented in `doc/app/SPECS.md`. A
+booleans (`isPlayer`/`isGM`/`isAdministrator`) previously documented in `doc/app-be/SPECS.md`. A
 membership record's role is the ceiling of that user's authority in that campaign; every capability
 at or below that tier is implied rather than separately granted.
 
@@ -65,7 +65,7 @@ in someone else's). This decision does not assume a global, cross-campaign role.
 
 Setting or changing another member's role is an Administrator-only action within that campaign,
 per the "manage users and permissions" capability already listed for Administrators in
-`doc/app/REQUIREMENTS.md`. An Administrator may promote a Player to GM, grant Administrator to
+`doc/app-be/REQUIREMENTS.md`. An Administrator may promote a Player to GM, grant Administrator to
 another member, or demote/remove a member's access via `CampaignMembership.status`. No lower tier
 can change anyone's role, including their own.
 
@@ -73,7 +73,7 @@ can change anyone's role, including their own.
 
 The rule above has a gap at the very start of a campaign's life: no Administrator can grant the
 first Administrator role, because no membership record exists yet to grant it from. West Wiki is
-explicitly not a public multi-tenant product (`doc/app/REQUIREMENTS.md`'s Non-Goals rule out public
+explicitly not a public multi-tenant product (`doc/app-be/REQUIREMENTS.md`'s Out of Scope section rules out public
 multi-tenant hosting for the initial release), so this isn't a general self-service problem to
 solve — creating a `Campaign` is itself the privileged bootstrap action.
 
@@ -85,7 +85,7 @@ above.
 ## Consequences
 
 - `ViewerContext.viewerRole` already matches this model as written and needs no code change.
-- `doc/app/SPECS.md`'s `CampaignMembership` attributes must change from three independent booleans
+- `doc/app-be/SPECS.md`'s `CampaignMembership` attributes must change from three independent booleans
   to a single `role` field.
 - Every future authorization check should be written as a rank comparison against a required
   minimum tier, never as an exact-match check or a check against multiple booleans.
@@ -120,10 +120,10 @@ public-read baseline.
 
 ## References
 
-- `doc/app/REQUIREMENTS.md` — Actors section (Anonymous Visitor, Player, GM, Administrator),
+- `doc/app-be/REQUIREMENTS.md` — Actors section (Anonymous Visitor, Player, GM, Administrator),
   Administrator's "manage users and permissions" capability, and the "Public multi-tenant hosting"
-  non-goal that motivates the campaign-creation bootstrap rule
-- `doc/app/SPECS.md` — `CampaignMembership` (attributes to be updated to match this decision)
-- `doc/app/adr/002-character-lifecycle-and-retirement.md` — precedent for a single-field lifecycle
+  out-of-scope item that motivates the campaign-creation bootstrap rule
+- `doc/app-be/SPECS.md` — `CampaignMembership` (attributes to be updated to match this decision)
+- `doc/app-be/adr/002-character-lifecycle-and-retirement.md` — precedent for a single-field lifecycle
   status rather than independent flags
 - `packages/app-be/src/kb/knowledge-base-gateway.ts` — existing `ViewerContext.viewerRole`
