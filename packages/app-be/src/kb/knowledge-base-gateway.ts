@@ -23,6 +23,12 @@ export interface ActivateCharacterEventInput {
   startingLocationId: LocationId;
 }
 
+export interface CreateCharacterEventInput {
+  name: string;
+  gameData: Record<string, unknown>;
+  ownerUserId: UserId;
+}
+
 /**
  * Application-facing seam to the event-sourced knowledge base.
  *
@@ -46,6 +52,11 @@ export interface KnowledgeBaseGateway {
 
   recordCharacterActivated(
     input: ActivateCharacterEventInput,
+    context: ActorContext,
+  ): Promise<CharacterCommandResult>;
+
+  recordCharacterCreated(
+    input: CreateCharacterEventInput,
     context: ActorContext,
   ): Promise<CharacterCommandResult>;
 }

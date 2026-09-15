@@ -10,6 +10,7 @@ import type {
 } from "../index.js";
 import type {
   ActivateCharacterEventInput,
+  CreateCharacterEventInput,
   KnowledgeBaseGateway,
   ViewerContext,
 } from "./knowledge-base-gateway.js";
@@ -30,8 +31,10 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
   private readonly characters = new Map<CharacterId, CharacterDetail>();
   private readonly startingLocations: LocationSummary[];
   private eventSequence = 0;
+  private characterSequence = 0;
 
   readonly activationWrites: ActivateCharacterEventInput[] = [];
+  readonly creationWrites: CreateCharacterEventInput[] = [];
 
   constructor(seed: InMemoryKnowledgeBaseSeed) {
     this.campaign = structuredClone(seed.campaign);
@@ -98,6 +101,33 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
     const eventId = `event-${++this.eventSequence}` as EventId;
     return {
       character: structuredClone(updated),
+      eventIds: [eventId],
+    };
+  }
+
+  async recordCharacterCreated(
+    input: CreateCharacterEventInput,
+    _context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    this.creationWrites.push(structuredClone(input));
+
+    const id = `character-${++this.characterSequence}` as CharacterId;
+    const character: CharacterDetail = {
+      id,
+      campaignId: this.campaign.id,
+      ownerUserId: input.ownerUserId,
+      name: input.name,
+      gameSystem: this.campaign.gameSystem,
+      gameData: input.gameData,
+      lifecycleStatus: "DRAFT",
+      countsAgainstRosterLimit: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.characters.set(id, character);
+
+    const eventId = `event-${++this.eventSequence}` as EventId;
+    return {
+      character: structuredClone(character),
       eventIds: [eventId],
     };
   }

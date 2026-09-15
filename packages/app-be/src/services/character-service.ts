@@ -2,6 +2,7 @@ import type {
   ActivateCharacterRequest,
   CharacterCommandResult,
   CharacterId,
+  CreateCharacterRequest,
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import type {
@@ -85,6 +86,28 @@ export class CharacterService {
       {
         characterId,
         startingLocationId: request.startingLocationId,
+      },
+      context,
+    );
+  }
+
+  async createDraftCharacter(
+    request: CreateCharacterRequest,
+    context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    const name = request.name?.trim();
+    if (!name) {
+      throw new DomainError(
+        "INVALID_REQUEST",
+        "Character name is required.",
+      );
+    }
+
+    return this.kb.recordCharacterCreated(
+      {
+        name,
+        gameData: request.gameData ?? {},
+        ownerUserId: context.userId,
       },
       context,
     );

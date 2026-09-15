@@ -116,4 +116,18 @@ describe("createServer", () => {
     expect(response.status).toBe(409);
     expect(response.body.code).toBe("ROSTER_LIMIT_REACHED");
   });
+
+  it("creates a draft character over HTTP", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({ campaign });
+    const app = createServer(kb);
+
+    const response = await request(app)
+      .post("/characters")
+      .set("x-user-id", "player-1")
+      .send({ name: "Tordek" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.character.lifecycleStatus).toBe("DRAFT");
+    expect(response.body.character.ownerUserId).toBe("player-1");
+  });
 });

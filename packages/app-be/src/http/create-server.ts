@@ -5,7 +5,11 @@ import express, {
   type Response,
 } from "express";
 
-import type { ActivateCharacterRequest, ApiError } from "../index.js";
+import type {
+  ActivateCharacterRequest,
+  ApiError,
+  CreateCharacterRequest,
+} from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import type { KnowledgeBaseGateway } from "../kb/knowledge-base-gateway.js";
 import { CharacterService } from "../services/character-service.js";
@@ -23,6 +27,18 @@ export function createServer(kb: KnowledgeBaseGateway): Express {
     try {
       const campaign = await kb.getCampaign(requireViewerContext(req));
       res.status(200).json(campaign);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/characters", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await characterService.createDraftCharacter(
+        req.body as CreateCharacterRequest,
+        requireViewerContext(req),
+      );
+      res.status(201).json(result);
     } catch (error) {
       next(error);
     }

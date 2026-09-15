@@ -219,3 +219,37 @@ describe("CharacterService", () => {
     expect(kb.activationWrites).toHaveLength(0);
   });
 });
+
+describe("CharacterService.createDraftCharacter", () => {
+  it("creates a draft character owned by the requesting player", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({ campaign });
+    const service = new CharacterService(kb);
+
+    const result = await service.createDraftCharacter(
+      { name: "Tordek", gameData: { class: "fighter" } },
+      context,
+    );
+
+    expect(result.character.name).toBe("Tordek");
+    expect(result.character.ownerUserId).toBe(context.userId);
+    expect(result.character.lifecycleStatus).toBe("DRAFT");
+    expect(result.character.currentLocation).toBeUndefined();
+    expect(result.character.countsAgainstRosterLimit).toBe(false);
+    expect(result.character.gameData).toEqual({ class: "fighter" });
+    expect(result.eventIds).toHaveLength(1);
+    expect(kb.creationWrites).toEqual([
+      { name: "Tordek", gameData: { class: "fighter" }, ownerUserId: context.userId },
+    ]);
+  });
+
+  it("rejects creation with a blank name without writing to the KB", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({ campaign });
+    const service = new CharacterService(kb);
+
+    const result = service.createDraftCharacter({ name: "   " }, context);
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    expect(kb.creationWrites).toHaveLength(0);
+  });
+});
