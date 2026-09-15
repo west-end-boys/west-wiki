@@ -4,6 +4,7 @@ import type { CampaignView } from "../index.js";
 import { hashPassword } from "../auth/password.js";
 import { DomainError } from "../domain/domain-error.js";
 import { InMemoryEmailGateway } from "../email/in-memory-email-gateway.js";
+import { InMemorySessionStore } from "../http/in-memory-session-store.js";
 import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
 import { InMemoryCampaignStore } from "../store/in-memory-campaign-store.js";
 import { AuthService } from "./auth-service.js";
@@ -36,7 +37,11 @@ describe("AuthService.createAccount", () => {
     const store = new InMemoryCampaignStore({ campaign });
     const admin = await seedAdmin(store);
     const emailGateway = new InMemoryEmailGateway();
-    const service = new AuthService(store, emailGateway);
+    const service = new AuthService(
+      store,
+      emailGateway,
+      new InMemorySessionStore(),
+    );
     const context: ViewerContext = {
       userId: admin.id,
       viewerRole: "ADMINISTRATOR",
@@ -67,7 +72,11 @@ describe("AuthService.createAccount", () => {
       role: "PLAYER",
     });
     const emailGateway = new InMemoryEmailGateway();
-    const service = new AuthService(store, emailGateway);
+    const service = new AuthService(
+      store,
+      emailGateway,
+      new InMemorySessionStore(),
+    );
     const context: ViewerContext = {
       userId: playerUser.id,
       viewerRole: "PLAYER",
@@ -87,7 +96,11 @@ describe("AuthService.createAccount", () => {
     const store = new InMemoryCampaignStore({ campaign });
     const admin = await seedAdmin(store);
     const emailGateway = new InMemoryEmailGateway();
-    const service = new AuthService(store, emailGateway);
+    const service = new AuthService(
+      store,
+      emailGateway,
+      new InMemorySessionStore(),
+    );
     const context: ViewerContext = {
       userId: admin.id,
       viewerRole: "ADMINISTRATOR",
@@ -105,24 +118,29 @@ describe("AuthService.createAccount", () => {
 });
 
 describe("AuthService.login", () => {
-  it("returns a session for correct credentials", async () => {
+  it("returns a resolvable session for correct credentials", async () => {
     const store = new InMemoryCampaignStore({ campaign });
     const admin = await seedAdmin(store);
-    const service = new AuthService(store, new InMemoryEmailGateway());
+    const sessionStore = new InMemorySessionStore();
+    const service = new AuthService(store, new InMemoryEmailGateway(), sessionStore);
 
     const result = await service.login({
       email: "admin@example.com",
       password: "admin-password",
     });
 
-    expect(result.sessionId).toEqual(expect.any(String));
     expect(result.userId).toBe(admin.id);
+    expect(await sessionStore.getSession(result.sessionId)).toBe(admin.id);
   });
 
   it("rejects an incorrect password", async () => {
     const store = new InMemoryCampaignStore({ campaign });
     await seedAdmin(store);
-    const service = new AuthService(store, new InMemoryEmailGateway());
+    const service = new AuthService(
+      store,
+      new InMemoryEmailGateway(),
+      new InMemorySessionStore(),
+    );
 
     const result = service.login({
       email: "admin@example.com",
@@ -135,7 +153,11 @@ describe("AuthService.login", () => {
 
   it("rejects an unknown email with the same error as a wrong password", async () => {
     const store = new InMemoryCampaignStore({ campaign });
-    const service = new AuthService(store, new InMemoryEmailGateway());
+    const service = new AuthService(
+      store,
+      new InMemoryEmailGateway(),
+      new InMemorySessionStore(),
+    );
 
     const result = service.login({
       email: "nobody@example.com",

@@ -3,6 +3,7 @@ import type {
   CampaignMembership,
   CampaignView,
   MembershipRole,
+  MembershipStatus,
   User,
   UserId,
 } from "../index.js";
@@ -52,4 +53,9 @@ export interface CampaignStore {
     userId: UserId,
     campaignId: CampaignId,
   ): Promise<CampaignMembership | null>;
+  setMembershipStatus(
+    userId: UserId,
+    campaignId: CampaignId,
+    status: MembershipStatus,
+  ): Promise<CampaignMembership>;
 }

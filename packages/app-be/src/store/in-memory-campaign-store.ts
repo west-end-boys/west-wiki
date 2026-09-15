@@ -2,6 +2,7 @@ import type {
   CampaignId,
   CampaignMembership,
   CampaignView,
+  MembershipStatus,
   User,
   UserId,
 } from "../index.js";
@@ -107,6 +108,24 @@ export class InMemoryCampaignStore implements CampaignStore {
       this.membershipKey(userId, campaignId),
     );
     return membership ? structuredClone(membership) : null;
+  }
+
+  async setMembershipStatus(
+    userId: UserId,
+    campaignId: CampaignId,
+    status: MembershipStatus,
+  ): Promise<CampaignMembership> {
+    const key = this.membershipKey(userId, campaignId);
+    const existing = this.memberships.get(key);
+    if (!existing) {
+      throw new Error(
+        `Unknown membership for user ${userId} in campaign ${campaignId}`,
+      );
+    }
+
+    const updated: CampaignMembership = { ...existing, status };
+    this.memberships.set(key, updated);
+    return structuredClone(updated);
   }
 
   private membershipKey(userId: UserId, campaignId: CampaignId): string {

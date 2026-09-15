@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import type {
   CreateAccountRequest,
   CreateAccountResult,
@@ -10,6 +8,7 @@ import { hashPassword, verifyPassword } from "../auth/password.js";
 import { DomainError } from "../domain/domain-error.js";
 import { hasAtLeast } from "../domain/role.js";
 import type { EmailGateway } from "../email/email-gateway.js";
+import type { SessionStore } from "../http/session-store.js";
 import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
 import type { CampaignStore } from "../store/campaign-store.js";
 
@@ -17,6 +16,7 @@ export class AuthService {
   constructor(
     private readonly campaignStore: CampaignStore,
     private readonly emailGateway: EmailGateway,
+    private readonly sessionStore: SessionStore,
   ) {}
 
   /** GM/Admin-assisted account creation - ADR 005's MVP interim path. */
@@ -94,7 +94,7 @@ export class AuthService {
     }
 
     return {
-      sessionId: randomUUID(),
+      sessionId: await this.sessionStore.createSession(user.id),
       userId: user.id,
     };
   }
