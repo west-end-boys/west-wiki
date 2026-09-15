@@ -130,4 +130,21 @@ describe("createServer", () => {
     expect(response.body.character.lifecycleStatus).toBe("DRAFT");
     expect(response.body.character.ownerUserId).toBe("player-1");
   });
+
+  it("retires an eligible character over HTTP", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "ACTIVE")],
+      startingLocations: [marinsHold],
+    });
+    const app = createServer(kb);
+
+    const response = await request(app)
+      .post("/characters/tordek/retire")
+      .set("x-user-id", "player-1")
+      .send({ locationId: marinsHold.id });
+
+    expect(response.status).toBe(200);
+    expect(response.body.character.lifecycleStatus).toBe("RETIRED");
+  });
 });

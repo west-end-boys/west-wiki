@@ -12,6 +12,7 @@ import type {
   ActivateCharacterEventInput,
   CreateCharacterEventInput,
   KnowledgeBaseGateway,
+  RetireCharacterEventInput,
   ViewerContext,
 } from "./knowledge-base-gateway.js";
 
@@ -35,6 +36,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
 
   readonly activationWrites: ActivateCharacterEventInput[] = [];
   readonly creationWrites: CreateCharacterEventInput[] = [];
+  readonly retirementWrites: RetireCharacterEventInput[] = [];
 
   constructor(seed: InMemoryKnowledgeBaseSeed) {
     this.campaign = structuredClone(seed.campaign);
@@ -128,6 +130,40 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
     const eventId = `event-${++this.eventSequence}` as EventId;
     return {
       character: structuredClone(character),
+      eventIds: [eventId],
+    };
+  }
+
+  async recordCharacterRetired(
+    input: RetireCharacterEventInput,
+    _context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    const character = this.characters.get(input.characterId);
+    if (!character) {
+      throw new Error(`Unknown character ${input.characterId}`);
+    }
+
+    const location = this.startingLocations.find(
+      (candidate) => candidate.id === input.locationId,
+    );
+    if (!location) {
+      throw new Error(`Unknown location ${input.locationId}`);
+    }
+
+    this.retirementWrites.push(structuredClone(input));
+
+    const updated: CharacterDetail = {
+      ...character,
+      lifecycleStatus: "RETIRED",
+      currentLocation: structuredClone(location),
+      countsAgainstRosterLimit: false,
+      retiredAt: new Date().toISOString(),
+    };
+    this.characters.set(updated.id, updated);
+
+    const eventId = `event-${++this.eventSequence}` as EventId;
+    return {
+      character: structuredClone(updated),
       eventIds: [eventId],
     };
   }

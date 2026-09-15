@@ -29,6 +29,12 @@ export interface CreateCharacterEventInput {
   ownerUserId: UserId;
 }
 
+export interface RetireCharacterEventInput {
+  characterId: CharacterId;
+  locationId: LocationId;
+  narrative?: string;
+}
+
 /**
  * Application-facing seam to the event-sourced knowledge base.
  *
@@ -57,6 +63,11 @@ export interface KnowledgeBaseGateway {
 
   recordCharacterCreated(
     input: CreateCharacterEventInput,
+    context: ActorContext,
+  ): Promise<CharacterCommandResult>;
+
+  recordCharacterRetired(
+    input: RetireCharacterEventInput,
     context: ActorContext,
   ): Promise<CharacterCommandResult>;
 }

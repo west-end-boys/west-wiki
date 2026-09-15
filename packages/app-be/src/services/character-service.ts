@@ -2,13 +2,18 @@ import type {
   ActivateCharacterRequest,
   CharacterCommandResult,
   CharacterId,
+  CharacterLifecycleStatus,
   CreateCharacterRequest,
+  RetireCharacterRequest,
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import type {
   KnowledgeBaseGateway,
   ViewerContext,
 } from "../kb/knowledge-base-gateway.js";
+
+const RETIREMENT_ELIGIBLE_STATUSES: ReadonlySet<CharacterLifecycleStatus> =
+  new Set(["ACTIVE", "MISSING"]);
 
 export class CharacterService {
   constructor(private readonly kb: KnowledgeBaseGateway) {}
@@ -108,6 +113,57 @@ export class CharacterService {
         name,
         gameData: request.gameData ?? {},
         ownerUserId: context.userId,
+      },
+      context,
+    );
+  }
+
+  async retireCharacter(
+    characterId: CharacterId,
+    request: RetireCharacterRequest,
+    context: ViewerContext,
+  ): Promise<CharacterCommandResult> {
+    const [character, knownLocations] = await Promise.all([
+      this.kb.getCharacter(characterId, context),
+      this.kb.listStartingLocations(context),
+    ]);
+
+    if (!character) {
+      throw new DomainError("NOT_FOUND", "Character was not found.");
+    }
+
+    if (character.ownerUserId !== context.userId) {
+      throw new DomainError(
+        "FORBIDDEN",
+        "Only the character owner may retire this character.",
+      );
+    }
+
+    if (!RETIREMENT_ELIGIBLE_STATUSES.has(character.lifecycleStatus)) {
+      throw new DomainError(
+        "CHARACTER_NOT_ELIGIBLE",
+        "Only active or missing characters may be retired.",
+        { lifecycleStatus: character.lifecycleStatus },
+      );
+    }
+
+    const location = knownLocations.find(
+      (candidate) => candidate.id === request.locationId,
+    );
+
+    if (!location) {
+      throw new DomainError(
+        "INVALID_LOCATION",
+        "The requested retirement location was not found.",
+        { locationId: request.locationId },
+      );
+    }
+
+    return this.kb.recordCharacterRetired(
+      {
+        characterId,
+        locationId: request.locationId,
+        narrative: request.narrative,
       },
       context,
     );

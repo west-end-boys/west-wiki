@@ -9,12 +9,25 @@ import type {
   ActivateCharacterRequest,
   ApiError,
   CreateCharacterRequest,
+  RetireCharacterRequest,
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import type { KnowledgeBaseGateway } from "../kb/knowledge-base-gateway.js";
 import { CharacterService } from "../services/character-service.js";
 import { devViewerContext, requireViewerContext } from "./dev-viewer-context.js";
 import { mapDomainErrorToStatus } from "./error-mapping.js";
+
+function requireCharacterId(req: Request, res: Response): string | undefined {
+  const { characterId } = req.params;
+  if (typeof characterId !== "string" || characterId.length === 0) {
+    res.status(400).json({
+      code: "INVALID_REQUEST",
+      message: "Missing characterId route parameter.",
+    } satisfies ApiError);
+    return undefined;
+  }
+  return characterId;
+}
 
 export function createServer(kb: KnowledgeBaseGateway): Express {
   const characterService = new CharacterService(kb);
@@ -48,18 +61,31 @@ export function createServer(kb: KnowledgeBaseGateway): Express {
     "/characters/:characterId/activate",
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const { characterId } = req.params;
-        if (typeof characterId !== "string" || characterId.length === 0) {
-          res.status(400).json({
-            code: "INVALID_REQUEST",
-            message: "Missing characterId route parameter.",
-          } satisfies ApiError);
-          return;
-        }
+        const characterId = requireCharacterId(req, res);
+        if (!characterId) return;
 
         const result = await characterService.activateCharacter(
           characterId,
           req.body as ActivateCharacterRequest,
+          requireViewerContext(req),
+        );
+        res.status(200).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.post(
+    "/characters/:characterId/retire",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const characterId = requireCharacterId(req, res);
+        if (!characterId) return;
+
+        const result = await characterService.retireCharacter(
+          characterId,
+          req.body as RetireCharacterRequest,
           requireViewerContext(req),
         );
         res.status(200).json(result);
