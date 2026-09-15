@@ -1,7 +1,7 @@
 # Application Requirements
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: September 14, 2026
 
 ## Purpose
 
@@ -170,6 +170,28 @@ For day-based commitments, a commitment ending on date X blocks through the end 
 - Other players join using specific eligible characters.
 - Calls and participation records preserve both the human user and acting character.
 
+## Notification Requirements
+
+The application notifies players and GMs by email when campaign events are relevant to them.
+Natural-language generation may assist in drafting notification content, subject to the same
+LLM-proposes/application-validates principle as other natural-language features.
+
+Initial notification types:
+
+- **Call to Adventure** - players whose eligible characters are located in, or geographically
+  relevant to, the region where a new adventure opportunity or Call to Adventure becomes available.
+- **Periodic recap newsletter** - a recurring (e.g. weekly or monthly) summary of significant
+  campaign events, assembled from accepted campaign changes and sent to campaign members.
+- **GM/Administrator announcements** - manually authored broadcast messages from a GM or
+  Administrator to some or all campaign members.
+
+Additional notification types are expected as the campaign's needs become clearer; this list is not
+exhaustive.
+
+Email delivery is required independent of the authentication approach - see
+[ADR 005](adr/005-email-and-password-authentication.md). Account verification and password-recovery
+email should use the same delivery capability rather than a separate mechanism.
+
 ## Report and Canon Requirements
 
 - Post-session reports may be submitted in natural language.
@@ -230,3 +252,10 @@ Important changes should retain enough information to determine:
 - How interactive must the first map experience be?
 - When should travel feasibility become more sophisticated than a departure-location check?
 - Which game-system fields, if any, should eventually be promoted out of `gameData`?
+- Should players control which notification types they receive (opt-in/opt-out preferences)?
+- What triggers the recap newsletter's cadence - a fixed schedule, or an accumulated
+  significant-event threshold?
+- Should Call to Adventure notifications filter by character eligibility (lifecycle state,
+  availability) in addition to region, or notify on region alone?
+- Should notifications send immediately, or batch/digest to avoid overwhelming players with
+  frequent small events?
