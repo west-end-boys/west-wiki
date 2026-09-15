@@ -42,9 +42,12 @@ Tasks carry an `area:*` label. Route documentation reads accordingly:
 | Label | Read these docs |
 |---|---|
 | `area:kb` | `doc/kb/REQUIREMENTS.md`, `doc/kb/ARCHITECTURE.md`, `doc/kb/SPECS.md` |
-| `area:app-be` | `doc/app-be/REQUIREMENTS.md`, `doc/app-be/ARCHITECTURE.md`, `doc/app-be/SPECS.md` |
-| `area:app-fe` | `doc/app-fe/*`, plus `doc/app-be/REQUIREMENTS.md` until product-level requirements are hoisted |
+| `area:app` | `doc/app-be/REQUIREMENTS.md`, `doc/app-be/ARCHITECTURE.md`, `doc/app-be/SPECS.md`; plus `doc/app-fe/*` for front-end work |
 | `area:contract` | `doc/contract/API.md`, `doc/contract/KB-PROJECTIONS.md`, both apps' `SPECS.md` |
+
+`area:app` covers both back end and front end for now; read the `app-be` documents unless the task
+is front-end work. Split it into `area:app-be` / `area:app-fe` when `doc/app-fe/` and
+`packages/app-fe/` have enough content to route differently.
 
 `doc/app-fe/` has no documents yet.
 

@@ -147,7 +147,7 @@ autocode's core workflow names `REQUIREMENTS.md`, `ARCHITECTURE.md` and `SPECS.m
 assuming one application per repo. Three resolutions apply here:
 
 **1. Per-layer documents resolve by the task's area.** A task labelled `area:kb` reads `doc/kb/*`; a
-task labelled `area:app-be` reads `doc/app-be/*`; a task labelled `area:app-fe` reads `doc/app-fe/*`.
+task labelled `area:app` reads `doc/app-be/*`, or `doc/app-fe/*` for front-end work.
 A task labelled `area:contract` reads `doc/contract/API.md` and both app layers' `SPECS.md`. When
 area is ambiguous, ask rather than guess.
 
