@@ -2,6 +2,7 @@ import type {
   CampaignId,
   CampaignMembership,
   CampaignView,
+  MembershipStatus,
   User,
   UserId,
 } from "../index.js";
@@ -25,6 +26,7 @@ export interface InMemoryCampaignStoreSeed {
 export class InMemoryCampaignStore implements CampaignStore {
   private campaign: CampaignView | null;
   private readonly users = new Map<UserId, User>();
+  private readonly passwordHashes = new Map<UserId, string>();
   private readonly memberships = new Map<string, CampaignMembership>();
   private campaignSequence = 0;
   private userSequence = 0;
@@ -62,12 +64,24 @@ export class InMemoryCampaignStore implements CampaignStore {
       createdAt: new Date().toISOString(),
     };
     this.users.set(id, user);
+    this.passwordHashes.set(id, input.passwordHash);
     return structuredClone(user);
   }
 
   async getUser(userId: UserId): Promise<User | null> {
     const user = this.users.get(userId);
     return user ? structuredClone(user) : null;
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const user = [...this.users.values()].find(
+      (candidate) => candidate.email === email,
+    );
+    return user ? structuredClone(user) : null;
+  }
+
+  async getPasswordHash(userId: UserId): Promise<string | null> {
+    return this.passwordHashes.get(userId) ?? null;
   }
 
   async createMembership(
@@ -94,6 +108,24 @@ export class InMemoryCampaignStore implements CampaignStore {
       this.membershipKey(userId, campaignId),
     );
     return membership ? structuredClone(membership) : null;
+  }
+
+  async setMembershipStatus(
+    userId: UserId,
+    campaignId: CampaignId,
+    status: MembershipStatus,
+  ): Promise<CampaignMembership> {
+    const key = this.membershipKey(userId, campaignId);
+    const existing = this.memberships.get(key);
+    if (!existing) {
+      throw new Error(
+        `Unknown membership for user ${userId} in campaign ${campaignId}`,
+      );
+    }
+
+    const updated: CampaignMembership = { ...existing, status };
+    this.memberships.set(key, updated);
+    return structuredClone(updated);
   }
 
   private membershipKey(userId: UserId, campaignId: CampaignId): string {

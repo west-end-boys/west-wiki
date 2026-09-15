@@ -8,15 +8,27 @@ import express, {
 import type {
   ActivateCharacterRequest,
   ApiError,
+  CreateAccountRequest,
   CreateCharacterRequest,
+  LoginRequest,
   RetireCharacterRequest,
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
+import type { EmailGateway } from "../email/email-gateway.js";
 import type { KnowledgeBaseGateway } from "../kb/knowledge-base-gateway.js";
+import { AuthService } from "../services/auth-service.js";
 import { CharacterService } from "../services/character-service.js";
 import type { CampaignStore } from "../store/campaign-store.js";
-import { devViewerContext, requireViewerContext } from "./dev-viewer-context.js";
+import { createAuthMiddleware, requireViewerContext } from "./auth-middleware.js";
 import { mapDomainErrorToStatus } from "./error-mapping.js";
+import type { SessionStore } from "./session-store.js";
+
+export interface CreateServerDependencies {
+  kb: KnowledgeBaseGateway;
+  campaignStore: CampaignStore;
+  emailGateway: EmailGateway;
+  sessionStore: SessionStore;
+}
 
 function requireCharacterId(req: Request, res: Response): string | undefined {
   const { characterId } = req.params;
@@ -30,15 +42,38 @@ function requireCharacterId(req: Request, res: Response): string | undefined {
   return characterId;
 }
 
-export function createServer(
-  kb: KnowledgeBaseGateway,
-  campaignStore: CampaignStore,
-): Express {
+export function createServer(deps: CreateServerDependencies): Express {
+  const { kb, campaignStore, emailGateway, sessionStore } = deps;
   const characterService = new CharacterService(kb, campaignStore);
+  const authService = new AuthService(campaignStore, emailGateway, sessionStore);
+  const authMiddleware = createAuthMiddleware(sessionStore, campaignStore);
   const app = express();
 
   app.use(express.json());
-  app.use(devViewerContext);
+
+  // Public: no session exists yet at the point of logging in.
+  app.post("/auth/login", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await authService.login(req.body as LoginRequest);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.use(authMiddleware);
+
+  app.post("/accounts", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await authService.createAccount(
+        req.body as CreateAccountRequest,
+        requireViewerContext(req),
+      );
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.get("/campaign", async (req: Request, res: Response, next: NextFunction) => {
     try {
