@@ -42,7 +42,7 @@ packages/
 doc/
   REPO-STRUCTURE.md      This file. Layout, ownership, document map.
   DEVELOPMENT.md         Dev environment setup, git hooks, local workflow.
-  BUILD-PLAN.md          Phase plan, two tracks. Iterated as work proceeds.
+  BUILD-PLAN.md          Retired placeholder. GitHub milestones are authoritative.
   LESSONS.md             Reflection triage.
   ARCHITECTURE.md        System level: the three layers, boundaries, deployment. NOT YET WRITTEN.
   adr/                   System + contract decisions.
@@ -135,7 +135,7 @@ determines whose review is required.
 | `doc/kb/**`, `packages/kb/**` | benjaminbradley | per task |
 | `doc/app-be/**`, `packages/app-be/**` | deastland0423 | per task |
 | `doc/app-fe/**`, `packages/app-fe/**` | deastland0423 | per task |
-| `doc/BUILD-PLAN.md` | joint | per phase |
+| `doc/BUILD-PLAN.md` | joint | retired -- placeholder only |
 | `doc/app-be/**` product-level requirements | joint | rare |
 | `doc/LESSONS.md` | either | as reflected |
 
@@ -147,14 +147,23 @@ autocode's core workflow names `REQUIREMENTS.md`, `ARCHITECTURE.md` and `SPECS.m
 assuming one application per repo. Three resolutions apply here:
 
 **1. Per-layer documents resolve by the task's area.** A task labelled `area:kb` reads `doc/kb/*`; a
-task labelled `area:app-be` reads `doc/app-be/*`; a task labelled `area:app-fe` reads `doc/app-fe/*`.
+task labelled `area:app` reads `doc/app-be/*`, or `doc/app-fe/*` for front-end work.
 A task labelled `area:contract` reads `doc/contract/API.md` and both app layers' `SPECS.md`. When
 area is ambiguous, ask rather than guess.
 
-**2. `doc/BUILD-PLAN.md` stays singular.** The `github-issues` adapter reads that exact path, and
-one plan per repo keeps phases as vertical slices spanning all three layers -- which is what we want,
-since a phase that touches only one side cannot be demonstrated end to end. Tasks carry an `area:*`
-label to route them.
+**2. The phase plan is retired; GitHub milestones are authoritative.** autocode's planning workflow
+expects a phase plan at `doc/BUILD-PLAN.md`, and the `github-issues` adapter's `plan.digest` reads
+that exact path. That plan has been digested and the project is now in build and iteration, so
+milestone scope and task status live in GitHub instead: milestones `A1`-`A4` (application),
+`K1`-`K3` (KB), and `INT` (integration). `doc/BUILD-PLAN.md` remains as a short pointer so the
+documented path still resolves. **This is a deliberate deviation from `.autocode/`**: `plan.digest`
+is no longer run, and re-running it would re-derive a plan the milestones already supersede.
+
+Two consequences follow. Milestone titles no longer carry the `Phase <N>` prefix that
+`.autocode/task-tracking/github-issues/phase-status.sh` matches on, so the autonomous harness
+(`.autocode/scripts/auto-resume-harness.js`) sees no phases and cannot drive this repo -- it has
+never been run here, and its strictly sequential phase model cannot express two parallel tracks
+anyway. Tasks still carry an `area:*` label to route them.
 
 Everything else follows `.autocode/` unmodified. Task status lives in GitHub issues; see
 `.autocode/core/workflow/task-tracking.md` for the contract and
