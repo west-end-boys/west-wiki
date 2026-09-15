@@ -47,6 +47,10 @@ It adds little for scheduling bookkeeping - a commitment's date range, a publish
 window, a call-to-adventure's status - which behaves like ordinary transactional application state,
 not history that needs retracting.
 
+`Region` is KB-owned, as the parent of `Location` and the subject of `GMRegionAuthorization`.
+That placement was previously inferred from those references rather than decided; it is confirmed
+here.
+
 `KB-PROJECTIONS.md` is the single source of truth for the table itself. This ADR does not
 duplicate it - it records why the split exists and resolves the one place it used to conflict with
 another document.
@@ -85,13 +89,12 @@ referential integrity for these ids is an application concern.
 
 Carried forward from `KB-PROJECTIONS.md`'s own Open Items, still unresolved by this ADR:
 
-- Region ownership is inferred (KB-owned because `Location`/`GMRegionAuthorization` reference it),
-  not independently confirmed.
-- Whether the KB records application-computed availability at all, or only location/in-transit
-  status - `doc/app-be/adr/003-downtime-commitments-and-availability.md` holds that availability is
-  always derived and never stored.
 - The attribute lists in `KB-PROJECTIONS.md` are drafts, not yet re-validated against the KB's fact
   model.
+
+Region ownership and whether the KB records application-computed availability were both open when
+this ADR was drafted. Both were settled on 2026-09-15 and are recorded under `KB-PROJECTIONS.md`'s
+Resolved section.
 
 ---
 
