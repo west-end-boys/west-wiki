@@ -104,4 +104,118 @@ describe("CharacterService", () => {
     });
     expect(kb.activationWrites).toHaveLength(0);
   });
+
+  it("rejects activation of a character that does not exist", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "DRAFT")],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "unknown-character",
+      { startingLocationId: marinsHold.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
+
+  it("rejects activation when the requester does not own the character", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [
+        { ...character("tordek", "DRAFT"), ownerUserId: "someone-else" },
+      ],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "tordek",
+      { startingLocationId: marinsHold.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
+
+  it("rejects activation of a character that is not a draft", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "ACTIVE")],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "tordek",
+      { startingLocationId: marinsHold.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({
+      code: "CHARACTER_NOT_DRAFT",
+      details: { lifecycleStatus: "ACTIVE" },
+    });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
+
+  it("rejects activation at a location that does not allow it", async () => {
+    const forbiddenLocation: LocationSummary = {
+      id: "haunted-mire",
+      name: "Haunted Mire",
+      allowsCharacterActivation: false,
+    };
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "DRAFT")],
+      startingLocations: [marinsHold, forbiddenLocation],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "tordek",
+      { startingLocationId: forbiddenLocation.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({
+      code: "INVALID_STARTING_LOCATION",
+      details: { startingLocationId: forbiddenLocation.id },
+    });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
+
+  it("rejects standard activation when the campaign requires GM approval", async () => {
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign: {
+        ...campaign,
+        characterRules: { ...campaign.characterRules, activationPolicy: "GM_APPROVAL" },
+      },
+      characters: [character("tordek", "DRAFT")],
+      startingLocations: [marinsHold],
+    });
+    const service = new CharacterService(kb);
+
+    const result = service.activateCharacter(
+      "tordek",
+      { startingLocationId: marinsHold.id },
+      context,
+    );
+
+    await expect(result).rejects.toBeInstanceOf(DomainError);
+    await expect(result).rejects.toMatchObject({
+      code: "DOMAIN_VALIDATION_FAILED",
+      details: { activationPolicy: "GM_APPROVAL" },
+    });
+    expect(kb.activationWrites).toHaveLength(0);
+  });
 });
