@@ -137,7 +137,7 @@ The application HTTP contract currently lives under `packages/app-be`.
 - TypeScript contract types: `packages/app-be/src/index.ts`
 - OpenAPI description: `packages/app-be/openapi.yaml`
 
-The KB/app boundary is a separate contract concern and should be documented explicitly as that interface stabilizes.
+The KB/app boundary is a separate contract concern. Entity ownership and the shape of the projections the KB provides to `app-be` are documented in [`doc/contract/KB-PROJECTIONS.md`](KB-PROJECTIONS.md).
 
 ## Initial Slice
 

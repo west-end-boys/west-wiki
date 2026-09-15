@@ -1,11 +1,11 @@
 # Application Specifications
 
 Status: Draft  
-Last updated: August 24, 2026
+Last updated: August 25, 2026
 
 ## Purpose
 
-This document records application-internal models and workflow semantics for West Wiki. Shared KB/app API contracts belong in `doc/contract/API.md` and `packages/contract`, not here.
+This document records application-internal models and workflow semantics for West Wiki. Shared KB/app API contracts belong in [`doc/contract/API.md`](../contract/API.md) and [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), not here.
 
 ## Initial Domain Model
 
@@ -39,35 +39,6 @@ Possible attributes:
 - `isGM`
 - `isAdministrator`
 - `status`
-
-### Character
-
-Possible core attributes:
-
-- `id`
-- `campaignId`
-- `ownerUserId`
-- `name`
-- `lifecycleStatus`
-- `currentLocation` — embedded location projection, undefined for drafts
-- `countsAgainstRosterLimit` — derived from `lifecycleStatus`
-- `gameSystem`
-- `gameData`
-- `createdAt`
-- `retiredAt`
-
-There is no separate readiness status. Lifecycle state carries draft/readiness semantics.
-
-Initial lifecycle values:
-
-- `DRAFT`
-- `ACTIVE`
-- `MISSING`
-- `RETIRED`
-- `DEAD`
-- `ARCHIVED`
-
-Roster-counting states are `ACTIVE` and `MISSING`; `countsAgainstRosterLimit` is derived from this rule rather than stored independently.
 
 ### CharacterCommitment
 
@@ -105,24 +76,6 @@ Initial downtime statuses:
 - `CANCELLED`
 - `ENDED_EARLY`
 
-### Region
-
-Represents a map area associated with locations, opportunities, and GM authorization.
-
-### Location
-
-Possible attributes:
-
-- `id`
-- `regionId`
-- `name`
-- `type`
-- `isSafe`
-- `allowsCharacterActivation`
-- `visibility`
-
-Possible types include settlement, dungeon, landmark, route, and wilderness site.
-
 ### AdventureOpportunity
 
 Possible attributes:
@@ -149,10 +102,6 @@ Possible attributes:
 - `maximumPlayers`
 - `status`
 
-### GMRegionAuthorization
-
-Associates a GM with one or more regions they are authorized to run.
-
 ### CallToAdventure
 
 Possible attributes:
@@ -177,13 +126,14 @@ Possible attributes:
 - `status`
 - `joinedAt`
 
-### ExpeditionReport
+### KB-owned entities
 
-Stores the original human-submitted account unchanged and links it to the relevant expedition, authors, participants, and locations as appropriate.
+`Character`, `Region`, `Location`, `GMRegionAuthorization`, `ExpeditionReport`, and `ProposedChange`
+are owned by the Knowledge Base, not by the application. The application holds no canonical record of
+them; it consumes viewer-resolved projections across the KB/app boundary.
 
-### ProposedChange
-
-Stores structured campaign changes extracted or suggested by the LLM before GM approval.
+Their shapes are defined in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md). The
+workflows below reference them but do not restate them.
 
 ## Character Activation Workflow
 
