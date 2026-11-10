@@ -52,6 +52,10 @@ export class CommitmentService {
     return this.store.createCommitment(input);
   }
 
+  async getCommitment(commitmentId: string): Promise<CharacterCommitment | null> {
+    return this.store.getCommitment(commitmentId);
+  }
+
   async cancelScheduledCommitment(
     commitmentId: string,
   ): Promise<CharacterCommitment> {
