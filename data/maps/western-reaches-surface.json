@@ -907,12 +907,6 @@
       "terrain": "ocean"
     },
     {
-      "x": 100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 200,
       "y": 1,
       "regionId": "andrik",
@@ -1797,12 +1791,6 @@
     {
       "x": 300,
       "y": 73,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
-      "x": 300,
-      "y": 74,
       "regionId": "UNKNOWN",
       "terrain": "ocean"
     },
@@ -2695,12 +2683,6 @@
       "terrain": "ocean"
     },
     {
-      "x": 500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 600,
       "y": 1,
       "regionId": "andrik",
@@ -3585,12 +3567,6 @@
     {
       "x": 700,
       "y": 73,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
-      "x": 700,
-      "y": 74,
       "regionId": "UNKNOWN",
       "terrain": "ocean"
     },
@@ -4483,12 +4459,6 @@
       "terrain": "ocean"
     },
     {
-      "x": 900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 1000,
       "y": 1,
       "regionId": "andrik",
@@ -5375,12 +5345,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "jungle"
-    },
-    {
-      "x": 1100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 1200,
@@ -6271,12 +6235,6 @@
       "terrain": "jungle"
     },
     {
-      "x": 1300,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 1400,
       "y": 1,
       "regionId": "andrik",
@@ -7163,12 +7121,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "jungle"
-    },
-    {
-      "x": 1500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 1600,
@@ -8059,12 +8011,6 @@
       "terrain": "jungle"
     },
     {
-      "x": 1700,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 1800,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -8951,12 +8897,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "jungle"
-    },
-    {
-      "x": 1900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 2000,
@@ -9847,12 +9787,6 @@
       "terrain": "jungle"
     },
     {
-      "x": 2100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 2200,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -10739,12 +10673,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "jungle"
-    },
-    {
-      "x": 2300,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 2400,
@@ -11635,12 +11563,6 @@
       "terrain": "jungle"
     },
     {
-      "x": 2500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 2600,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -12525,12 +12447,6 @@
     {
       "x": 2700,
       "y": 73,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
-      "x": 2700,
-      "y": 74,
       "regionId": "UNKNOWN",
       "terrain": "ocean"
     },
@@ -13423,12 +13339,6 @@
       "terrain": "ocean"
     },
     {
-      "x": 2900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 3000,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -14317,12 +14227,6 @@
       "terrain": "forest"
     },
     {
-      "x": 3100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 3200,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -15209,12 +15113,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "mountain"
-    },
-    {
-      "x": 3300,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
     },
     {
       "x": 3400,
@@ -16105,12 +16003,6 @@
       "terrain": "mountain"
     },
     {
-      "x": 3500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
-    },
-    {
       "x": 3600,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -16997,12 +16889,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "mountain"
-    },
-    {
-      "x": 3700,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
     },
     {
       "x": 3800,
@@ -17893,12 +17779,6 @@
       "terrain": "desert"
     },
     {
-      "x": 3900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
-    },
-    {
       "x": 4000,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -18785,12 +18665,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "desert"
-    },
-    {
-      "x": 4100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
     },
     {
       "x": 4200,
@@ -19681,12 +19555,6 @@
       "terrain": "desert"
     },
     {
-      "x": 4300,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 4400,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -20573,12 +20441,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "desert"
-    },
-    {
-      "x": 4500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 4600,
@@ -21469,12 +21331,6 @@
       "terrain": "desert"
     },
     {
-      "x": 4700,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 4800,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -22361,12 +22217,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "desert"
-    },
-    {
-      "x": 4900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     },
     {
       "x": 5000,
@@ -23257,12 +23107,6 @@
       "terrain": "desert"
     },
     {
-      "x": 5100,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
       "x": 5200,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -24147,12 +23991,6 @@
     {
       "x": 5300,
       "y": 73,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
-    },
-    {
-      "x": 5300,
-      "y": 74,
       "regionId": "UNKNOWN",
       "terrain": "ocean"
     },
@@ -25045,12 +24883,6 @@
       "terrain": "desert"
     },
     {
-      "x": 5500,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "jungle"
-    },
-    {
       "x": 5600,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -25937,12 +25769,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "grassland"
-    },
-    {
-      "x": 5700,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "jungle"
     },
     {
       "x": 5800,
@@ -26833,12 +26659,6 @@
       "terrain": "desert"
     },
     {
-      "x": 5900,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "jungle"
-    },
-    {
       "x": 6000,
       "y": 1,
       "regionId": "UNKNOWN",
@@ -27723,12 +27543,6 @@
     {
       "x": 6100,
       "y": 73,
-      "regionId": "UNKNOWN",
-      "terrain": "desert"
-    },
-    {
-      "x": 6100,
-      "y": 74,
       "regionId": "UNKNOWN",
       "terrain": "desert"
     },
@@ -28619,12 +28433,6 @@
       "y": 73,
       "regionId": "UNKNOWN",
       "terrain": "desert"
-    },
-    {
-      "x": 6300,
-      "y": 74,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
     }
   ],
   "connections": [
