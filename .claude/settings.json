@@ -111,7 +111,12 @@
       "Bash(git checkout *)",
       "Bash(npm uninstall *)",
       "Bash(gh pr create --repo west-end-boys/west-wiki --base main --head deastland --title 'Auth foundation: password hashing, email seam, AuthService, real sessions' --body ' *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(git check-ignore *)",
+      "Bash(python3 -c ' *)",
+      "Bash(git lfs *)"
     ],
     "deny": [
       "Read(./.env)",
