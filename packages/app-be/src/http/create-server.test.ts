@@ -179,6 +179,72 @@ describe("createServer", () => {
     expect(campaignResponse.body).toMatchObject({ id: campaign.id });
   });
 
+  it("lists viewer-safe location projections", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const hauntedMire: LocationSummary = {
+      id: "haunted-mire",
+      name: "Haunted Mire",
+      allowsCharacterActivation: false,
+    };
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      locations: [marinsHold, hauntedMire],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+    });
+
+    const response = await request(app)
+      .get("/locations")
+      .set("Authorization", authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([marinsHold, hauntedMire]);
+  });
+
+  it("filters locations to valid starting locations when requested", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const hauntedMire: LocationSummary = {
+      id: "haunted-mire",
+      name: "Haunted Mire",
+      allowsCharacterActivation: false,
+    };
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      locations: [marinsHold, hauntedMire],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+    });
+
+    const response = await request(app)
+      .get("/locations?startingLocation=true")
+      .set("Authorization", authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([marinsHold]);
+  });
+
   it("lists only the authenticated player's character projections", async () => {
     const campaignStore = new InMemoryCampaignStore({ campaign });
     const sessionStore = new InMemorySessionStore();
