@@ -4,6 +4,7 @@ import { createServer } from "./http/create-server.js";
 import { InMemorySessionStore } from "./http/in-memory-session-store.js";
 import { InMemoryKnowledgeBaseGateway } from "./kb/in-memory-knowledge-base-gateway.js";
 import { InMemoryCampaignStore } from "./store/in-memory-campaign-store.js";
+import { InMemoryCharacterCommitmentStore } from "./store/in-memory-character-commitment-store.js";
 import type { CampaignView, CharacterDetail, LocationSummary } from "./index.js";
 
 const campaign: CampaignView = {
@@ -29,6 +30,7 @@ const marinsHold: LocationSummary = {
 const campaignStore = new InMemoryCampaignStore({ campaign });
 const emailGateway = new InMemoryEmailGateway();
 const sessionStore = new InMemorySessionStore();
+const commitmentStore = new InMemoryCharacterCommitmentStore();
 
 const GM_EMAIL = "gm@example.com";
 const GM_PASSWORD = "gm-password";
@@ -62,7 +64,13 @@ const kb = new InMemoryKnowledgeBaseGateway({
   startingLocations: [marinsHold],
 });
 
-const app = createServer({ kb, campaignStore, emailGateway, sessionStore });
+const app = createServer({
+  kb,
+  campaignStore,
+  emailGateway,
+  sessionStore,
+  commitmentStore,
+});
 const port = Number(process.env.PORT ?? 3000);
 
 app.listen(port, () => {
