@@ -51,6 +51,8 @@ export interface KnowledgeBaseGateway {
     context: ViewerContext,
   ): Promise<CharacterDetail | null>;
 
+  listLocations(context: ViewerContext): Promise<LocationSummary[]>;
+
   listStartingLocations(context: ViewerContext): Promise<LocationSummary[]>;
 
   recordCharacterActivated(
