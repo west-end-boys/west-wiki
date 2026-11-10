@@ -179,6 +179,109 @@ describe("createServer", () => {
     expect(campaignResponse.body).toMatchObject({ id: campaign.id });
   });
 
+  it("lists only the authenticated player's character projections", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const player = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const other = await loginAs(
+      campaignStore,
+      sessionStore,
+      "other@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [
+        character("tordek", player.userId, "DRAFT"),
+        character("brenna", player.userId, "ACTIVE"),
+        character("osric", other.userId, "ACTIVE"),
+      ],
+      locations: [marinsHold],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+    });
+
+    const response = await request(app)
+      .get("/characters")
+      .set("Authorization", player.authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(2);
+    expect(response.body.map((item: { id: string }) => item.id)).toEqual([
+      "tordek",
+      "brenna",
+    ]);
+    expect(response.body[0]).not.toHaveProperty("gameData");
+    expect(response.body[0]).not.toHaveProperty("ownerUserId");
+  });
+
+  it("returns a viewer-safe character projection by id", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+      locations: [marinsHold],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+    });
+
+    const response = await request(app)
+      .get("/characters/tordek")
+      .set("Authorization", authHeader);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      id: "tordek",
+      ownerUserId: userId,
+      lifecycleStatus: "ACTIVE",
+    });
+  });
+
+  it("returns 404 for an unknown character id", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({ campaign });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+    });
+
+    const response = await request(app)
+      .get("/characters/unknown-character")
+      .set("Authorization", authHeader);
+
+    expect(response.status).toBe(404);
+    expect(response.body.code).toBe("NOT_FOUND");
+  });
+
   it("activates an eligible draft character over HTTP", async () => {
     const campaignStore = new InMemoryCampaignStore({ campaign });
     const sessionStore = new InMemorySessionStore();
