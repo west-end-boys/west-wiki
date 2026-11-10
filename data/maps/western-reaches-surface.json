@@ -17,61 +17,61 @@
     {
       "x": 0,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 0,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -461,67 +461,67 @@
     {
       "x": 100,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 100,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 100,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -911,61 +911,61 @@
     {
       "x": 200,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 200,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 200,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 200,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 200,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -1355,67 +1355,67 @@
     {
       "x": 300,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 300,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 300,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 300,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 300,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 300,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -1805,61 +1805,61 @@
     {
       "x": 400,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 400,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 400,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 400,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 400,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 400,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 400,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 400,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 400,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 400,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -2249,67 +2249,67 @@
     {
       "x": 500,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 500,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 500,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 500,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 500,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 500,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -2699,61 +2699,61 @@
     {
       "x": 600,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 600,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 600,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 600,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 600,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 600,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 600,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 600,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 600,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 600,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -3143,67 +3143,67 @@
     {
       "x": 700,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 700,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 700,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 700,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 700,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 700,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 700,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 700,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 700,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 700,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 700,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -3593,61 +3593,61 @@
     {
       "x": 800,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 800,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 800,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 800,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 800,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 800,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 800,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 800,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 800,
       "y": 9,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 800,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -4037,67 +4037,67 @@
     {
       "x": 900,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 900,
       "y": 1,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 900,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 900,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 900,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 900,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 900,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 900,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 900,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 900,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 900,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -4487,61 +4487,61 @@
     {
       "x": 1000,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1000,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1000,
       "y": 9,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1000,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -4931,67 +4931,67 @@
     {
       "x": 1100,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1100,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1100,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1100,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1100,
       "y": 9,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1100,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -5381,61 +5381,61 @@
     {
       "x": 1200,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1200,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1200,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1200,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1200,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1200,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1200,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1200,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1200,
       "y": 9,
-      "region": "UNKNOWN",
-      "terrain": "jungle"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1200,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -5825,67 +5825,67 @@
     {
       "x": 1300,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1300,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1300,
       "y": 2,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1300,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "mountain"
     },
     {
       "x": 1300,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1300,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "jungle"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1300,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1300,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1300,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1300,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1300,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -6275,61 +6275,61 @@
     {
       "x": 1400,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1400,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1400,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "jungle"
+      "region": "andrik",
+      "terrain": "grassland"
     },
     {
       "x": 1400,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "grassland"
     },
     {
       "x": 1400,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "grassland"
     },
     {
       "x": 1400,
       "y": 7,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1400,
       "y": 9,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -6719,68 +6719,68 @@
     {
       "x": 1500,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1500,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1500,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "jungle"
     },
     {
       "x": 1500,
       "y": 3,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
       "y": 4,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
       "y": 5,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1500,
       "y": 8,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1500,
       "y": 10,
-      "region": "UNKNOWN",
-      "terrain": "ocean"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1500,
@@ -7169,61 +7169,61 @@
     {
       "x": 1600,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "grassland"
     },
     {
       "x": 1600,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "grassland"
     },
     {
       "x": 1600,
       "y": 6,
-      "region": "UNKNOWN",
-      "terrain": "grassland"
+      "region": "andrik",
+      "terrain": "forest"
     },
     {
       "x": 1600,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1600,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
@@ -7613,67 +7613,67 @@
     {
       "x": 1700,
       "y": 0,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 1,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 2,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 3,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 4,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 5,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 6,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 7,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 8,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 9,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
       "x": 1700,
       "y": 10,
-      "region": "UNKNOWN",
+      "region": "andrik",
       "terrain": "ocean"
     },
     {
