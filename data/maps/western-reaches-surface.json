@@ -1,0 +1,18 @@
+{
+  "map": {
+    "id": "western-reaches-surface",
+    "name": "Western Reaches"
+  },
+  "regions": [
+    {
+      "id": "gloaming",
+      "name": "The Gloaming"
+    },
+    {
+      "id": "last-sea",
+      "name": "The Last Sea"
+    }
+  ],
+  "hexes": [],
+  "locations": []
+}

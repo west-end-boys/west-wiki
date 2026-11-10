@@ -19,6 +19,8 @@ import type {
 export interface InMemoryKnowledgeBaseSeed {
   campaign: CampaignView;
   characters?: CharacterDetail[];
+  locations?: LocationSummary[];
+  /** @deprecated Prefer locations; retained while older tests/seeds migrate. */
   startingLocations?: LocationSummary[];
 }
 
@@ -36,7 +38,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
    */
   private readonly campaign: CampaignView;
   private readonly characters = new Map<CharacterId, CharacterDetail>();
-  private readonly startingLocations: LocationSummary[];
+  private readonly locations: LocationSummary[];
   private eventSequence = 0;
   private characterSequence = 0;
 
@@ -46,7 +48,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
 
   constructor(seed: InMemoryKnowledgeBaseSeed) {
     this.campaign = structuredClone(seed.campaign);
-    this.startingLocations = structuredClone(seed.startingLocations ?? []);
+    this.locations = structuredClone(seed.locations ?? seed.startingLocations ?? []);
 
     for (const character of seed.characters ?? []) {
       this.characters.set(character.id, structuredClone(character));
@@ -70,10 +72,16 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
     return character ? structuredClone(character) : null;
   }
 
+  async listLocations(_context: ViewerContext): Promise<LocationSummary[]> {
+    return structuredClone(this.locations);
+  }
+
   async listStartingLocations(
     _context: ViewerContext,
   ): Promise<LocationSummary[]> {
-    return structuredClone(this.startingLocations);
+    return structuredClone(
+      this.locations.filter((location) => location.allowsCharacterActivation),
+    );
   }
 
   async recordCharacterActivated(
@@ -85,8 +93,10 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
       throw new Error(`Unknown character ${input.characterId}`);
     }
 
-    const location = this.startingLocations.find(
-      (candidate) => candidate.id === input.startingLocationId,
+    const location = this.locations.find(
+      (candidate) =>
+        candidate.id === input.startingLocationId &&
+        candidate.allowsCharacterActivation,
     );
     if (!location) {
       throw new Error(`Unknown starting location ${input.startingLocationId}`);
@@ -145,7 +155,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
       throw new Error(`Unknown character ${input.characterId}`);
     }
 
-    const location = this.startingLocations.find(
+    const location = this.locations.find(
       (candidate) => candidate.id === input.locationId,
     );
     if (!location) {
