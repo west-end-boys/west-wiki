@@ -18,6 +18,37 @@ export type CharacterLifecycleStatus =
 
 export type ActivationPolicy = "AUTOMATIC" | "GM_APPROVAL";
 
+export type CharacterCommitmentType =
+  | "TRAVEL"
+  | "CAROUSING"
+  | "CRAFTING"
+  | "TRAINING"
+  | "RECOVERY"
+  | "OTHER"
+  | "EXPEDITION";
+
+export type CharacterCommitmentStatus =
+  | "SCHEDULED"
+  | "ACTIVE"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "ENDED_EARLY";
+
+export interface CharacterCommitment {
+  id: CommitmentId;
+  characterId: CharacterId;
+  type: CharacterCommitmentType;
+  startDate: LocalDate;
+  endDate: LocalDate;
+  effectiveEndDate?: LocalDate;
+  status: CharacterCommitmentStatus;
+  locationId?: LocationId;
+  description?: string;
+  sourceType?: string;
+  sourceId?: string;
+  activityData?: Record<string, unknown>;
+}
+
 /**
  * Never "ANONYMOUS" - per doc/adr/004-role-based-permission-tiers.md,
  * that tier is the absence of a membership record, not a stored value.
