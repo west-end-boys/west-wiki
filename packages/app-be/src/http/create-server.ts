@@ -92,6 +92,19 @@ export function createServer(deps: CreateServerDependencies): Express {
     }
   });
 
+  app.get("/locations", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = requireViewerContext(req);
+      const startingLocationOnly = req.query.startingLocation === "true";
+      const locations = startingLocationOnly
+        ? await kb.listStartingLocations(context)
+        : await kb.listLocations(context);
+      res.status(200).json(locations);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/characters", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = requireViewerContext(req);
