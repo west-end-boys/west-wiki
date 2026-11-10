@@ -92,6 +92,40 @@ export function createServer(deps: CreateServerDependencies): Express {
     }
   });
 
+  app.get("/characters", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = requireViewerContext(req);
+      const characters = await kb.listCharacters(context.userId, context);
+      res.status(200).json(characters);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get(
+    "/characters/:characterId",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const characterId = requireCharacterId(req, res);
+        if (!characterId) return;
+
+        const context = requireViewerContext(req);
+        const character = await kb.getCharacter(characterId, context);
+        if (!character) {
+          res.status(404).json({
+            code: "NOT_FOUND",
+            message: "Character was not found.",
+          } satisfies ApiError);
+          return;
+        }
+
+        res.status(200).json(character);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   app.post("/characters", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await characterService.createDraftCharacter(
