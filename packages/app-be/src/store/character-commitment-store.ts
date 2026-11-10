@@ -4,8 +4,7 @@ import type {
   CommitmentId,
 } from "../index.js";
 
-export interface CreateCharacterCommitmentInput
-  extends Omit<CharacterCommitment, "id"> {}
+export type CreateCharacterCommitmentInput = Omit<CharacterCommitment, "id">;
 
 export interface CharacterCommitmentStore {
   createCommitment(
