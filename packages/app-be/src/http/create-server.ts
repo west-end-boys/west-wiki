@@ -12,6 +12,7 @@ import type {
   CreateCharacterRequest,
   LoginRequest,
   RetireCharacterRequest,
+  ScheduleDowntimeRequest,
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import type { EmailGateway } from "../email/email-gateway.js";
@@ -20,6 +21,7 @@ import { AuthService } from "../services/auth-service.js";
 import { AvailabilityService } from "../services/availability-service.js";
 import { CharacterService } from "../services/character-service.js";
 import { CommitmentService } from "../services/commitment-service.js";
+import { DowntimeService } from "../services/downtime-service.js";
 import type { CampaignStore } from "../store/campaign-store.js";
 import type { CharacterCommitmentStore } from "../store/character-commitment-store.js";
 import { createAuthMiddleware, requireViewerContext } from "./auth-middleware.js";
@@ -51,6 +53,7 @@ export function createServer(deps: CreateServerDependencies): Express {
   const characterService = new CharacterService(kb, campaignStore);
   const commitmentService = new CommitmentService(commitmentStore);
   const availabilityService = new AvailabilityService(kb, commitmentService);
+  const downtimeService = new DowntimeService(kb, commitmentService);
   const authService = new AuthService(campaignStore, emailGateway, sessionStore);
   const authMiddleware = createAuthMiddleware(sessionStore, campaignStore);
   const app = express();
@@ -184,6 +187,53 @@ export function createServer(deps: CreateServerDependencies): Express {
       next(error);
     }
   });
+
+  app.post(
+    "/characters/:characterId/downtime",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const characterId = requireCharacterId(req, res);
+        if (!characterId) return;
+
+        const result = await downtimeService.scheduleDowntime(
+          characterId,
+          req.body as ScheduleDowntimeRequest,
+          requireViewerContext(req),
+        );
+        res.status(201).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.post(
+    "/characters/:characterId/commitments/:commitmentId/cancel",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const characterId = requireCharacterId(req, res);
+        if (!characterId) return;
+
+        const { commitmentId } = req.params;
+        if (typeof commitmentId !== "string" || commitmentId.length === 0) {
+          res.status(400).json({
+            code: "INVALID_REQUEST",
+            message: "Missing commitmentId route parameter.",
+          } satisfies ApiError);
+          return;
+        }
+
+        const result = await downtimeService.cancelScheduledDowntime(
+          characterId,
+          commitmentId,
+          requireViewerContext(req),
+        );
+        res.status(200).json(result);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.post(
     "/characters/:characterId/activate",
