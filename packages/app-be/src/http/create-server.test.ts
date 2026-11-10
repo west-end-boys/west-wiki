@@ -12,6 +12,7 @@ import { hashPassword } from "../auth/password.js";
 import { InMemoryEmailGateway } from "../email/in-memory-email-gateway.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
 import { InMemoryCampaignStore } from "../store/in-memory-campaign-store.js";
+import { InMemoryCharacterCommitmentStore } from "../store/in-memory-character-commitment-store.js";
 import { createServer } from "./create-server.js";
 import { InMemorySessionStore } from "./in-memory-session-store.js";
 
@@ -91,6 +92,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -112,6 +114,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore: new InMemorySessionStore(),
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app).get("/campaign");
@@ -131,6 +134,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore: new InMemorySessionStore(),
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -163,6 +167,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const loginResponse = await request(app)
@@ -202,6 +207,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -235,6 +241,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -274,6 +281,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -309,6 +317,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -338,6 +347,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -346,6 +356,89 @@ describe("createServer", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.code).toBe("NOT_FOUND");
+  });
+
+  it("returns derived character availability over HTTP", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+      locations: [marinsHold],
+    });
+    const commitmentStore = new InMemoryCharacterCommitmentStore({
+      commitments: [
+        {
+          id: "commitment-1",
+          characterId: "tordek",
+          type: "CRAFTING",
+          startDate: "2026-09-15",
+          endDate: "2026-09-21",
+          status: "SCHEDULED",
+        },
+      ],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore,
+    });
+
+    const blocked = await request(app)
+      .get("/characters/tordek/availability?date=2026-09-21")
+      .set("Authorization", authHeader);
+    const free = await request(app)
+      .get("/characters/tordek/availability?date=2026-09-22")
+      .set("Authorization", authHeader);
+
+    expect(blocked.status).toBe(200);
+    expect(blocked.body).toEqual({
+      characterId: "tordek",
+      date: "2026-09-21",
+      available: false,
+      reasons: [
+        { code: "BLOCKING_COMMITMENT", commitmentId: "commitment-1" },
+      ],
+    });
+    expect(free.status).toBe(200);
+    expect(free.body.available).toBe(true);
+  });
+
+  it("rejects availability requests without a date", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
+    });
+
+    const response = await request(app)
+      .get("/characters/tordek/availability")
+      .set("Authorization", authHeader);
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("INVALID_REQUEST");
   });
 
   it("activates an eligible draft character over HTTP", async () => {
@@ -367,6 +460,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -402,6 +496,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -428,6 +523,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -459,6 +555,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -485,6 +582,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
@@ -512,6 +610,7 @@ describe("createServer", () => {
       campaignStore,
       emailGateway: new InMemoryEmailGateway(),
       sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
     });
 
     const response = await request(app)
