@@ -120,7 +120,7 @@
       "x":3000,
       "y":29,
       "region":"gloaming",
-      "terrain": ["forest", "road"]
+      "terrain":"forest"
     },
     {
       "x":3000,
@@ -139,6 +139,73 @@
       "y":32,
       "region":"gloaming",
       "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":22,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":23,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":24,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":25,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":26,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":27,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":28,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":29,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":30,
+      "region":"gloaming",
+      "terrain":"forest"
+    },
+    {
+      "x":3100,
+      "y":31,
+      "region":"gloaming",
+      "terrain":"forest"
+    }
+  ],
+  "connections": [
+    {
+      "from": { "x": 3000, "y": 29 },
+      "to": { "x": 3100, "y": 28 },
+      "type": "path"
     }
   ],
   "locations": []
