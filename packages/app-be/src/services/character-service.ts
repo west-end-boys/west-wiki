@@ -134,7 +134,7 @@ export class CharacterService {
   ): Promise<CharacterCommandResult> {
     const [character, knownLocations] = await Promise.all([
       this.kb.getCharacter(characterId, context),
-      this.kb.listStartingLocations(context),
+      this.kb.listLocations(context),
     ]);
 
     if (!character) {
