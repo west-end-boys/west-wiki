@@ -27,6 +27,8 @@ export type CharacterCommitmentType =
   | "OTHER"
   | "EXPEDITION";
 
+export type DowntimeType = Exclude<CharacterCommitmentType, "EXPEDITION">;
+
 export type CharacterCommitmentStatus =
   | "SCHEDULED"
   | "ACTIVE"
@@ -153,6 +155,14 @@ export interface ActivateCharacterRequest {
 export interface RetireCharacterRequest {
   locationId: LocationId;
   narrative?: string;
+}
+
+export interface ScheduleDowntimeRequest {
+  type: DowntimeType;
+  startDate: LocalDate;
+  endDate: LocalDate;
+  description?: string;
+  activityData?: Record<string, unknown>;
 }
 
 /**
