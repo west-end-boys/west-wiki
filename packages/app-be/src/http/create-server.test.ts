@@ -441,6 +441,184 @@ describe("createServer", () => {
     expect(response.body.code).toBe("INVALID_REQUEST");
   });
 
+  it("schedules downtime over HTTP and blocks availability", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+      locations: [marinsHold],
+    });
+    const commitmentStore = new InMemoryCharacterCommitmentStore();
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore,
+    });
+
+    const scheduleResponse = await request(app)
+      .post("/characters/tordek/downtime")
+      .set("Authorization", authHeader)
+      .send({
+        type: "CRAFTING",
+        startDate: "2026-11-12",
+        endDate: "2026-11-18",
+      });
+
+    expect(scheduleResponse.status).toBe(201);
+    expect(scheduleResponse.body).toMatchObject({
+      characterId: "tordek",
+      type: "CRAFTING",
+      status: "SCHEDULED",
+    });
+
+    const availabilityResponse = await request(app)
+      .get("/characters/tordek/availability?date=2026-11-12")
+      .set("Authorization", authHeader);
+
+    expect(availabilityResponse.status).toBe(200);
+    expect(availabilityResponse.body.available).toBe(false);
+    expect(availabilityResponse.body.reasons[0]).toMatchObject({
+      code: "BLOCKING_COMMITMENT",
+      commitmentId: scheduleResponse.body.id,
+    });
+  });
+
+  it("schedules travel as downtime with a destination", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const wardenwood: LocationSummary = {
+      id: "wardenwood",
+      name: "Wardenwood",
+      allowsCharacterActivation: false,
+    };
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+      locations: [marinsHold, wardenwood],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
+    });
+
+    const response = await request(app)
+      .post("/characters/tordek/downtime")
+      .set("Authorization", authHeader)
+      .send({
+        type: "TRAVEL",
+        startDate: "2026-11-12",
+        endDate: "2026-11-14",
+        activityData: { destinationLocationId: wardenwood.id },
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.type).toBe("TRAVEL");
+    expect(response.body.activityData).toEqual({
+      destinationLocationId: wardenwood.id,
+    });
+  });
+
+  it("cancels scheduled downtime and releases the reserved dates", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+      locations: [marinsHold],
+    });
+    const commitmentStore = new InMemoryCharacterCommitmentStore();
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore,
+    });
+
+    const scheduled = await request(app)
+      .post("/characters/tordek/downtime")
+      .set("Authorization", authHeader)
+      .send({
+        type: "CAROUSING",
+        startDate: "2026-11-12",
+        endDate: "2026-11-12",
+      });
+
+    const cancelled = await request(app)
+      .post(
+        `/characters/tordek/commitments/${scheduled.body.id}/cancel`,
+      )
+      .set("Authorization", authHeader);
+
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.status).toBe("CANCELLED");
+
+    const availability = await request(app)
+      .get("/characters/tordek/availability?date=2026-11-12")
+      .set("Authorization", authHeader);
+
+    expect(availability.status).toBe(200);
+    expect(availability.body.available).toBe(true);
+  });
+
+  it("rejects EXPEDITION through the downtime endpoint", async () => {
+    const campaignStore = new InMemoryCampaignStore({ campaign });
+    const sessionStore = new InMemorySessionStore();
+    const { userId, authHeader } = await loginAs(
+      campaignStore,
+      sessionStore,
+      "player@example.com",
+      "PLAYER",
+    );
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", userId, "ACTIVE")],
+    });
+    const app = createServer({
+      kb,
+      campaignStore,
+      emailGateway: new InMemoryEmailGateway(),
+      sessionStore,
+      commitmentStore: new InMemoryCharacterCommitmentStore(),
+    });
+
+    const response = await request(app)
+      .post("/characters/tordek/downtime")
+      .set("Authorization", authHeader)
+      .send({
+        type: "EXPEDITION",
+        startDate: "2026-11-12",
+        endDate: "2026-11-12",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("INVALID_REQUEST");
+  });
+
   it("activates an eligible draft character over HTTP", async () => {
     const campaignStore = new InMemoryCampaignStore({ campaign });
     const sessionStore = new InMemorySessionStore();
