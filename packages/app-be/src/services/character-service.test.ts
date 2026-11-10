@@ -289,6 +289,29 @@ describe("CharacterService.retireCharacter", () => {
     ]);
   });
 
+  it("allows retirement at a known location that is not a character starting location", async () => {
+    const hermitsRest: LocationSummary = {
+      id: "hermits-rest",
+      name: "Hermit's Rest",
+      allowsCharacterActivation: false,
+    };
+    const kb = new InMemoryKnowledgeBaseGateway({
+      campaign,
+      characters: [character("tordek", "ACTIVE")],
+      locations: [marinsHold, hermitsRest],
+    });
+    const service = new CharacterService(kb, campaignStore);
+
+    const result = await service.retireCharacter(
+      "tordek",
+      { locationId: hermitsRest.id },
+      context,
+    );
+
+    expect(result.character.lifecycleStatus).toBe("RETIRED");
+    expect(result.character.currentLocation?.id).toBe(hermitsRest.id);
+  });
+
   it("retires an eligible missing character", async () => {
     const kb = new InMemoryKnowledgeBaseGateway({
       campaign,
