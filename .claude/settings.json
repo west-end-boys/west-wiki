@@ -116,7 +116,12 @@
       "Bash(git stash *)",
       "Bash(git check-ignore *)",
       "Bash(python3 -c ' *)",
-      "Bash(git lfs *)"
+      "Bash(git lfs *)",
+      "Bash(python3 /private/tmp/claude-501/-Users-danieleastland-repos-west-wiki/a468b9cb-506e-4fc7-a39a-c880137dad0b/scratchpad/fix-arctic.py)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('data/maps/western-reaches-surface.json'\\)\\); print\\('JSON valid'\\)\")",
+      "Bash(python3 -c *)",
+      "Bash(npx eslint *)",
+      "Bash(npx tsc *)"
     ],
     "deny": [
       "Read(./.env)",
