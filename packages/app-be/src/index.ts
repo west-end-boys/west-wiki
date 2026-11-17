@@ -111,6 +111,14 @@ export interface CampaignView {
   };
 }
 
+export enum LocationType {
+  CITY_STATE = "city-state",
+  CITY = "city",
+  TOWN = "town",
+  VILLAGE = "village",
+  KEYED_LOCATION = "keyed-location",
+}
+
 /** Viewer-safe current projection of a location. */
 export interface LocationSummary {
   id: LocationId;

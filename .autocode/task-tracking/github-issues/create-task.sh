@@ -71,7 +71,7 @@ REPO_ARGS=()
 # "Tasks 0.1-0.3:" or "Task 0.15:" - mirrors operations.md's plan-ID lookup, widened
 # to cover grouped-task titles.
 PREFIX="${TITLE%%:*}:"
-EXISTING=$(gh issue list "${REPO_ARGS[@]}" --state all --search "in:title \"${PREFIX}\"" \
+EXISTING=$(gh issue list ${REPO_ARGS[@]+"${REPO_ARGS[@]}"} --state all --search "in:title \"${PREFIX}\"" \
   --json number,title \
   | jq -r --arg p "$PREFIX" '[.[] | select(.title | startswith($p))][0].number // empty')
 
@@ -81,7 +81,7 @@ if [[ -n "$EXISTING" ]]; then
   exit 0
 fi
 
-URL=$(gh issue create "${REPO_ARGS[@]}" \
+URL=$(gh issue create ${REPO_ARGS[@]+"${REPO_ARGS[@]}"} \
   --title "$TITLE" \
   --milestone "$MILESTONE" \
   --label "$LABELS" \

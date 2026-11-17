@@ -13,3 +13,16 @@ PROGRESS.md
 .autocode/scripts/node_modules/
 .autocode/state/
 log/harness-*.log
+
+# Campaign map source art — full-resolution originals (A0 posters, Photoshop
+# files) live locally only; they are too large to version here. The derived
+# hex data under data/maps/*.json IS tracked and is what the application reads.
+# A web-sized map image intended for the app belongs in a served asset
+# directory, not here.
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.tif
+data/**/*.tiff
+data/**/*.psd
+data/**/*.psb
