@@ -97,8 +97,12 @@ describe("separable", () => {
 
 describe("regionColour", () => {
   it("should return the hue step for the requested mode", () => {
-    expect(regionColour("gloaming", "light")).toBe(HUE.blue.light);
-    expect(regionColour("gloaming", "dark")).toBe(HUE.blue.dark);
+    // Read the hue from the table rather than naming one, so re-running the
+    // assignment does not break a test about mode lookup.
+    const hue = REGION_STYLE.gloaming.hue;
+    expect(regionColour("gloaming", "light")).toBe(HUE[hue].light);
+    expect(regionColour("gloaming", "dark")).toBe(HUE[hue].dark);
+    expect(HUE[hue].light).not.toBe(HUE[hue].dark);
   });
 
   it("should return the reserved grey for unassigned hexes", () => {
@@ -198,17 +202,34 @@ describe("paletteProblems against the committed map", () => {
   });
 
   it("should accept a border carried by texture alone", () => {
-    // lowland and myre are both orange, separated only by texture. This is one
-    // of the two borders the assignment deliberately rests on texture.
-    expect(REGION_STYLE.lowland.hue).toBe(REGION_STYLE.myre.hue);
-    expect(REGION_STYLE.lowland.texture).not.toBe(REGION_STYLE.myre.texture);
+    // bastion and lowland are both green, so only texture separates them.
+    // Fifteen regions over eight hues guarantees seven such pairs exist.
+    expect(REGION_STYLE.bastion.hue).toBe(REGION_STYLE.lowland.hue);
+    expect(REGION_STYLE.bastion.texture).not.toBe(REGION_STYLE.lowland.texture);
     const map = {
-      regions: [{ id: "lowland", name: "L" }, { id: "myre", name: "M" }],
+      regions: [{ id: "bastion", name: "B" }, { id: "lowland", name: "L" }],
       hexes: [
-        { x: 300, y: 10, regionId: "lowland" },
-        { x: 300, y: 11, regionId: "myre" },
+        { x: 300, y: 10, regionId: "bastion" },
+        { x: 300, y: 11, regionId: "lowland" },
       ],
     };
     expect(paletteProblems(map)).toEqual([]);
+  });
+
+  it("should keep every shared-hue pair separated by texture", () => {
+    // The structural floor: with 8 hues and 15 regions, seven pairs share a
+    // hue. If such a pair ever shared a texture too they would be identical,
+    // and any border between them would be invisible.
+    const byHue = new Map();
+    for (const [id, st] of Object.entries(REGION_STYLE)) {
+      if (st.hue === null) continue;
+      byHue.set(st.hue, [...(byHue.get(st.hue) ?? []), id]);
+    }
+    for (const [hue, ids] of byHue) {
+      expect(ids.length, `hue "${hue}" is used by ${ids.length} regions`).toBeLessThanOrEqual(2);
+      if (ids.length === 2) {
+        expect(REGION_STYLE[ids[0]].texture).not.toBe(REGION_STYLE[ids[1]].texture);
+      }
+    }
   });
 });

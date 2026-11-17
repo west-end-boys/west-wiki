@@ -12,16 +12,25 @@
  * has is three. Texture is therefore load-bearing rather than decorative, which
  * is the condition under which it may carry meaning.
  *
- * The assignment below was computed against the border graph of the real hex
- * data: it puts 16 of the 18 borders then present onto hue (worst CVD dE 8.4,
- * worst normal-vision dE 19.3 — both gates cleared) and leaves only the two
- * shortest borders resting on texture.
+ * The assignment below was computed against the complete border graph — every
+ * hex now carries a regionId, so all 31 region borders are known. It puts 28 of
+ * the 31 onto hue, every one clearing both gates (worst CVD dE 8.4, worst
+ * normal-vision dE 19.3). The three left to texture are the three shortest,
+ * 18 shared hexes between them, 1.6% of the map's total border length:
  *
- * That graph is not fixed. It grows with every column transcribed, and four of
- * the fifteen regions have no hexes at all yet, so a pair that does not touch
- * today may touch tomorrow. `paletteProblems` re-derives the graph from the
- * data and names anything this assignment no longer resolves; the viewer runs
- * it on every load and the test suite runs it against the committed map.
+ *   lowland | rimespire    8 hexes    green vs yellow, CVD dE 6.9
+ *   bastion | kyzian       7 hexes    green vs orange, CVD dE 2.7
+ *   montmar | sablewood    3 hexes    magenta vs aqua, CVD dE 1.6
+ *
+ * Some texture reliance is unavoidable even now the graph is complete: fifteen
+ * regions over eight hues means seven hue pairs are shared, and a shared-hue
+ * pair that borders can only be told apart by texture.
+ *
+ * `paletteProblems` re-derives the graph from the data and names anything this
+ * assignment no longer resolves; the viewer runs it on every load and the test
+ * suite runs it against the committed map. Region borders are settled now, so
+ * it should stay quiet — but it is what catches a region being added, split or
+ * redrawn later.
  *
  * Plain JS with no DOM dependency so the browser viewer and the tests can both
  * load it.
@@ -68,21 +77,21 @@ export const MISSING_FILL = "#ff35b0";
  * unassigned is the absence of a region, not another one of them.
  */
 export const REGION_STYLE = {
-  "gloaming":  { hue: "blue",    texture: "solid" },
+  "gloaming":  { hue: "yellow",  texture: "hatch" },
   "last-sea":  { hue: "violet",  texture: "hatch" },
   "andrik":    { hue: "red",     texture: "solid" },
   "tal-yool":  { hue: "magenta", texture: "hatch" },
-  "bastion":   { hue: "yellow",  texture: "hatch" },
-  "montmar":   { hue: "aqua",    texture: "hatch" },
-  "lowland":   { hue: "orange",  texture: "hatch" },
+  "bastion":   { hue: "green",   texture: "solid" },
+  "montmar":   { hue: "magenta", texture: "solid" },
+  "lowland":   { hue: "green",   texture: "hatch" },
   "rimespire": { hue: "yellow",  texture: "solid" },
-  "sablewood": { hue: "magenta", texture: "solid" },
-  "myre":      { hue: "orange",  texture: "solid" },
-  "dhalpurna": { hue: "green",   texture: "hatch" },
-  "kyzian":    { hue: "red",     texture: "hatch" },
+  "sablewood": { hue: "aqua",    texture: "hatch" },
+  "myre":      { hue: "blue",    texture: "solid" },
+  "dhalpurna": { hue: "violet",  texture: "solid" },
+  "kyzian":    { hue: "orange",  texture: "hatch" },
   "djurum":    { hue: "aqua",    texture: "solid" },
   "gilzai":    { hue: "blue",    texture: "hatch" },
-  "silent":    { hue: "violet",  texture: "solid" },
+  "silent":    { hue: "orange",  texture: "solid" },
   "UNKNOWN":   { hue: null, texture: "solid", light: "#cfcdc6", dark: "#403f3b" },
 };
 
