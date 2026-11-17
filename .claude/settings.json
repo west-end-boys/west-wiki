@@ -121,7 +121,16 @@
       "Bash(python3 -c \"import json; json.load\\(open\\('data/maps/western-reaches-surface.json'\\)\\); print\\('JSON valid'\\)\")",
       "Bash(python3 -c *)",
       "Bash(npx eslint *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(.autocode/task-tracking/github-issues/milestone.sh *)",
+      "Bash(.autocode/task-tracking/github-issues/create-task.sh *)",
+      "Bash(.autocode/task-tracking/github-issues/phase-status.sh *)",
+      "Bash(bash --version)",
+      "Bash(npm test *)",
+      "Bash(npm run map:view *)",
+      "Bash(node_modules/.bin/tsx tools/map-import.ts *)",
+      "Bash(pkill -f \"map-viewer/serve.mjs\")",
+      "Bash(ps -eo pid,lstart,command)"
     ],
     "deny": [
       "Read(./.env)",
