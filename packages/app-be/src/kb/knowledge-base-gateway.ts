@@ -9,13 +9,6 @@ import type {
   UserId,
 } from "../index.js";
 
-/**
- * Every tier a KB read can be resolved for. ANONYMOUS covers viewers who are
- * not members of the campaign; it is never a stored membership role. See
- * doc/app-be/adr/004-role-based-permission-tiers.md.
- */
-export type ViewerRole = "ANONYMOUS" | MembershipRole;
-
 /** A viewer with no campaign membership (or no session). Read-only. */
 export interface AnonymousViewerContext {
   viewerRole: "ANONYMOUS";

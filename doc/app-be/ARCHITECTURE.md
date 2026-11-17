@@ -14,7 +14,7 @@ Ownership is split by kind of data:
 
 The entity-by-entity split is tabulated in [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); see also the Data Ownership section below.
 
-See [ADR 001 (system)](../adr/001-event-sourced-fact-store.md), [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md), and [ADR 004 (system)](../adr/004-fact-model-veracity-and-visibility.md).
+See [ADR 001 (system)](../adr/001-event-sourced-fact-store.md), [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md), and [ADR 004 (system)](../adr/004-fact-model-veracity-and-visibility.md).
 
 System-wide boundaries and deployment concerns belong in `doc/ARCHITECTURE.md`; KB internals belong in `doc/kb/ARCHITECTURE.md`.
 
@@ -181,7 +181,7 @@ Curation is continuous: a GM promotes a rumor to canon by asserting it, contradi
 
 ## Data Ownership
 
-[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth for which layer owns which entity. This section describes what that ownership means for this layer; it does not restate the table. [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does.
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth for which layer owns which entity. This section describes what that ownership means for this layer; it does not restate the table. [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md) records why the split falls where it does.
 
 **The mental model:** the KB owns the state of the world and the entities within it. The application is an interface onto that state and the coordination layer for the adventures that generate expedition reports, which are the change records feeding the KB.
 
@@ -231,7 +231,7 @@ Client-side filtering is not a security boundary in either case.
 
 Application records reference KB entity identifiers, and KB entities may reference application identifiers -- `Character.ownerUserId`, an expedition report's links to its expedition and participants.
 
-The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md).
+The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Character State Authority
 

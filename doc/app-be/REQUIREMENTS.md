@@ -216,7 +216,7 @@ Initial campaign-knowledge visibility levels are:
 
 The application must never rely on client-side filtering to protect GM-only content.
 
-Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md).
+Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Natural-Language Interaction Requirements
 

@@ -28,7 +28,7 @@ offers elsewhere. Axes 7-9 weigh cost and fit among candidates that pass.
 | 4 | **Per-entry visibility**, resolved inside the store for a viewer tier, with effect and detail resolved separately: an entry may be fully visible, visible in effect with detail redacted, or hidden. | ADR 004; REQUIREMENTS "Visibility and Redaction" |
 | 5 | **Provenance envelope per value**: author, source, timestamp, LLM involvement, veracity, superseded entries. | [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) "Projection Conventions" |
 | 6 | **Typed fact registry and write-time authority**: payload schema, fold rule, permitted visibility, and required authority per fact type; GM region and owner checks at write. | ADR 004; REQUIREMENTS "Entity and Fact Requirements" |
-| 7 | **Deployment**: runs as a service inside our trust boundary, self-hostable with no licence cap, GM-only content stays on infrastructure we choose. | [ADR 003](../adr/003-kb-app-ownership-boundary.md) |
+| 7 | **Deployment**: runs as a service inside our trust boundary, self-hostable with no licence cap, GM-only content stays on infrastructure we choose. | [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) |
 | 8 | **Stack fit**: TypeScript monorepo; operational burden of any extra runtime or database. | `doc/REPO-STRUCTURE.md` |
 | 9 | **Retrieval value**: semantic search and entity resolution supporting natural-language queries. Natural-language interpretation is an application concern, so this is a sidecar question, not a base-layer one. | REQUIREMENTS "Out of Scope" |
 
@@ -123,7 +123,7 @@ weakest fit and is ruled out on licensing alone.
    entry kinds, a TypeScript fact-type registry, and fold functions -- is small enough that a
    product would add more surface than it removes.
 2. **Make event-sourcing libraries the next round of prior art for the base layer.** They are the
-   category that matches axes 1-6; agent-memory products are not.
+   category that matches axes 1-6; agent-memory products are not. See Round 2.
 3. **Revisit memory products as a derived retrieval projection, not a store.** Built only from
    viewer-resolved projections, one index per visibility tier, and rebuildable from the log, such an
    index cannot leak what redaction withholds. If that need arrives, Mem0 with `infer=False` on
@@ -133,6 +133,80 @@ weakest fit and is ruled out on licensing alone.
    session it describes is the first case where the two differ, and recomputing a derived value
    such as gold may depend on world-time order rather than record order. Candidate open question
    for `REQUIREMENTS.md`.
+
+## Round 2: Open-Source Building Blocks (2026-11-17)
+
+Gemini Deep Research was briefed with the axes above and the KB's fixed design, and asked two
+things: is there one project to build on, and what are the best components to take from existing
+projects, per capability area, under licences compatible with a permissive project licence. This
+section summarises its report. Licence and existence claims for its picks and key rejections were
+then checked against the repositories; activity dates could not be verified for any project.
+
+### Finding: no base to build on; assemble from parts
+
+No project passes axes 1-6. The two closest were `node-cqrs` (fails axis 4; partial on 5 and 6)
+and XTDB (fails 4 and 6, and runs on the JVM). We agree with the report: build a thin store and fold
+engine ourselves on Postgres, taking designs and a few libraries from the projects below.
+
+### Picks, with verification
+
+| Area | Project | Licence, and where verified | Form | Notes |
+|---|---|---|---|---|
+| Store, projections | [node-cqrs](https://github.com/snatalenko/node-cqrs) | Apache-2.0 -- repo sidebar and README. The report said MIT. | Pattern source; possible dependency | PostgreSQL and SQLite event stores exist; its docs call PostgreSQL support experimental. TypeScript. |
+| Store, projections | [Marten](https://github.com/JasperFx/marten) | MIT -- README | Port the design | Postgres event-table schema, inline and async projections, rebuild strategy. C#. |
+| Projections | [effect-cqrs](https://github.com/davidnussio/effect-cqrs) | MIT -- repo sidebar | Ideas only | Self-described as "an experiment, not a maintained library", so not a dependency. |
+| Temporal | [pg_bitemporal](https://github.com/scalegenius/pg_bitemporal) | BSD-3-Clause -- repo sidebar (scalegenius). The `adamsanghera` repo the report cites could not be fetched. | Port the design | World-time and record-time ranges with exclusion constraints. |
+| Temporal | [XTDB](https://github.com/xtdb/xtdb) | MPL-2.0 per the report; not re-checked | Ideas only | Bitemporal query model. |
+| Visibility | none | -- | Custom | No library separates effect from detail visibility. The report's suggested shape -- separate effect and detail payloads on each entry, filtered before the reducer runs -- matches ADR 004 as amended, with one correction (below). |
+| Provenance, intake | [langextract](https://github.com/google/langextract) | Apache-2.0 -- sidebar and LICENSE link | Port the design | Grounds each extraction to its character span in the source (README). The specific alignment algorithm the report describes was not verified. Python. |
+| Provenance | [tsprov](https://github.com/inflexa-ai/tsprov) | Unverified -- fetches failed | Not yet | Described as a TypeScript W3C PROV library; existence unconfirmed. |
+| Fact registry | [Zod](https://github.com/colinhacks/zod) | MIT -- sidebar | Dependency | Built-in JSON Schema conversion confirmed; exact function name not. |
+| Fact registry | [CUE](https://github.com/cue-lang/cue) | Apache-2.0 -- sidebar | Later | Candidate for runtime-defined fact types. |
+| Fact registry | [LinkML](https://github.com/linkml/linkml) | Apache-2.0 -- sidebar | Ideas only | Ontology-as-configuration model. |
+| Write authority | [node-casbin](https://github.com/apache/casbin-node-casbin) (`casbin` on npm) | Apache-2.0 -- sidebar | Dependency candidate | In-process; no sidecar service. |
+| Intake (app) | [BAML](https://github.com/BoundaryML/baml) | Apache-2.0 -- sidebar | App-side candidate | Whether the TypeScript client needs a native binary is unverified. |
+| Intake (app) | [microsoft/llmwiki](https://github.com/microsoft/llmwiki) | MIT -- LICENSE | Ideas only | VS Code extension; keeps raw sources separate from derived pages. |
+| Wiki views (app) | [Quartz](https://github.com/jackyzha0/quartz) | MIT -- LICENSE.txt on the `v5` branch | Port the design | Backlinks and graph views. Default branch is `v5`; no tagged v5 release seen. |
+| Curation (app) | [QuanReview](https://github.com/mattemusacchio/quanreview) | MIT -- LICENSE | Ideas only | Human correction of model-extracted annotations. |
+| Curation (app) | [Argilla](https://github.com/argilla-io/argilla) | Apache-2.0 -- sidebar | Ideas only | Maintainers "won't be adding new features going forward." |
+
+Rejections checked:
+
+- **Emmett** -- confirmed unlicensed: the maintainer wrote that "Emmett has no license by design"
+  (2025-08-04), and the dual AGPLv3/SSPL proposal is still pending. Ideas only.
+- **KurrentDB** -- licensed under the custom "Kurrent License v1" (the report said ESLv2), which
+  forbids offering it as a hosted service. Ideas only.
+- **Permify** -- AGPL-3.0, confirmed from the LICENSE file. Ideas only.
+- **nashsu/llm_wiki** -- GPL-3.0 per a page summary, not read verbatim. Ideas only.
+
+### Where we differ from the report
+
+1. **Pinning.** The report says a reconcilable fact type must have effect and detail visibility both
+   fixed at `CAMPAIGN`. Our rule pins only the effect, to every viewer who can see the subject; the
+   detail and provenance stay redactable (ADR 004, 2026-11-17 amendment).
+2. **Areas H, I and J are application concerns.** Natural-language intake, wiki rendering, and the
+   curation UI belong to `app-be` and `app-fe` under ADR 002. The KB's part is recording source spans
+   in provenance and serving the projections those views render. The picks are recorded here for the
+   application owners; they do not affect the choice of KB base.
+3. **W3C PROV.** The KB's provenance envelope is a fixed set of fields
+   (`doc/contract/KB-PROJECTIONS.md`). A PROV graph model is more than that needs unless provenance
+   must be exchanged with other tools. Ideas only until then.
+
+### Taken into the KB's design work
+
+- Two of the report's design challenges are now open questions in `REQUIREMENTS.md`: visible entries
+  that reference hidden entities (7), and fold order by record time versus world time (8).
+- Write-time authority depends on current state -- whether a GM is authorized for the region a
+  location sits in. Check it against the current projection inside the same transaction as the
+  append, or a concurrent change can race it. Input to `doc/kb/ARCHITECTURE.md`.
+- At campaign scale, compute each entity's fold on read and cache by entity, viewer tier, and last
+  log position, rather than materialising projections per viewer. Input to ADR 001 Open Question 2,
+  projection storage.
+
+### Before relying on Round 2
+
+- Every pick assumes Postgres. Storage is not yet decided.
+- Re-check `tsprov` and the `adamsanghera/pg_bitemporal` repository, which could not be fetched.
 
 ## Sources
 
@@ -150,3 +224,6 @@ weakest fit and is ruled out on licensing alone.
   [Graphiti overview](https://help.getzep.com/graphiti/graphiti/overview/),
   [adding fact triples](https://help.getzep.com/graphiti/working-with-data/adding-fact-triples),
   [Graphiti README](https://github.com/getzep/graphiti)
+- Round 2: the repositories linked in its table, plus the
+  [Emmett licensing post](https://event-driven.io/en/why-open-source-isnt-always-fair/) and
+  [node-cqrs docs](https://node-cqrs.org/)

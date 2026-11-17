@@ -40,7 +40,7 @@ it -- and getting the ownership right now keeps the stopgap from hardening into 
 
 "The map" conflates a static board, the things standing on it, and the rules governing what you
 can do at them. Applying the test from
-[ADR 003](003-kb-app-ownership-boundary.md) -- *does this need history, provenance, and
+[ADR 002](002-application-owned-identity-and-scheduling-state.md) -- *does this need history, provenance, and
 redaction?* -- splits it three ways:
 
 | Data | Owner | Why |
@@ -90,7 +90,7 @@ here is what the rules let you do there*.
 The `Location` projection gains a hex reference. The location entity stays KB-owned; the hex it
 names belongs to the app-owned board, so the reference crosses the boundary.
 
-[ADR 003](003-kb-app-ownership-boundary.md) §Cross-layer references already permits this, and in
+[ADR 002](002-application-owned-identity-and-scheduling-state.md) §Cross-layer references already permits this, and in
 the direction already in use -- `Character.ownerUserId` is a KB entity referencing an app
 identifier. The requirement it imposes is that board coordinates are stable and never reused,
 which holds trivially: they are grid positions on a painted poster.
@@ -196,9 +196,8 @@ only `enum` among roughly ten closed vocabularies in `index.ts`; every other one
 
 ## References
 
-- `doc/adr/002-application-owned-identity-and-scheduling-state.md` -- the test applied to the board
-- `doc/adr/003-kb-app-ownership-boundary.md` -- the ownership boundary this extends, and the
-  cross-layer reference rule a positioned location relies on
+- `doc/adr/002-application-owned-identity-and-scheduling-state.md` -- the ownership boundary this extends, the test
+  applied to the board, and the cross-layer reference rule a positioned location relies on
 - `doc/adr/004-fact-model-veracity-and-visibility.md` -- how KB-owned location knowledge is
   recorded and redacted
 - `doc/contract/KB-PROJECTIONS.md` -- the ownership table this proposes amending

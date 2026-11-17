@@ -57,6 +57,13 @@ export interface CharacterCommitment {
  */
 export type MembershipRole = "PLAYER" | "GM" | "ADMINISTRATOR";
 
+/**
+ * Every tier a read can be resolved for, in ascending rank. ANONYMOUS covers
+ * viewers who are not members of the campaign; it is never a stored
+ * membership role. See doc/app-be/adr/004-role-based-permission-tiers.md.
+ */
+export type ViewerRole = "ANONYMOUS" | MembershipRole;
+
 export type MembershipStatus = "ACTIVE" | "SUSPENDED";
 
 /** Application-owned per doc/adr/002-application-owned-identity-and-scheduling-state.md. */

@@ -7,7 +7,7 @@ Last updated: September 15, 2026
 
 This document records application-internal models and workflow semantics for West Wiki. Shared KB/app API contracts belong in [`doc/contract/API.md`](../contract/API.md) and [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md), not here.
 
-The entities in this document are application-owned current-state records held in an ordinary database. They are not event-sourced and carry no provenance chain -- see [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md). Which entities the KB owns instead is tabulated in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); those are consumed as projections, and summarized under "KB-owned entities" below.
+The entities in this document are application-owned current-state records held in an ordinary database. They are not event-sourced and carry no provenance chain -- see [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md). Which entities the KB owns instead is tabulated in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); those are consumed as projections, and summarized under "KB-owned entities" below.
 
 ## Initial Domain Model
 
@@ -82,7 +82,7 @@ Initial downtime statuses:
 
 ### AdventureOpportunity
 
-Visibility on this entity is enforced by application access control -- filtering rows by the caller's role tier at query time -- not by KB redaction. See [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md).
+Visibility on this entity is enforced by application access control -- filtering rows by the caller's role tier at query time -- not by KB redaction. See [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 Possible attributes:
 

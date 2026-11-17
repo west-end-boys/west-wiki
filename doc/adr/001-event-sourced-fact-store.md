@@ -138,7 +138,7 @@ Concretely:
   `doc/adr/004-fact-model-veracity-and-visibility.md` as fact-type versioning, and is still open.
 - **Open question 3, partial retraction UX**, is resolved as deferred per the first bullet.
 
-`doc/adr/003-kb-app-ownership-boundary.md` scopes which entities this store is responsible for, and
+`doc/adr/002-application-owned-identity-and-scheduling-state.md` scopes which entities this store is responsible for, and
 `doc/adr/004-fact-model-veracity-and-visibility.md` defines the entry structure this ADR left open.
 
 **2026-11-17.** Two parts of this ADR have been overtaken by
@@ -160,7 +160,7 @@ The decision itself -- an event-sourced fact store with the wiki as a projection
 ## References
 
 - `doc/REPO-STRUCTURE.md` — contract boundary, redaction policy, ADR scope rules
-- `doc/adr/003-kb-app-ownership-boundary.md` — entity ownership, trust model, KB as a service
+- `doc/adr/002-application-owned-identity-and-scheduling-state.md` — entity ownership, trust model, KB as a service
 - `doc/adr/004-fact-model-veracity-and-visibility.md` — entry kinds, registry, veracity, visibility
 - `doc/kb/REQUIREMENTS.md` — KB-layer requirements
 - `doc/contract/KB-PROJECTIONS.md` — normative KB/app boundary: entity ownership and projection shapes

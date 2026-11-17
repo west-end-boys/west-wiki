@@ -9,11 +9,11 @@ This document defines the campaign-world entities the Knowledge Base owns and th
 
 It is normative prose for the KB/app boundary. Executable types live under `packages/`; this document describes what they mean and who owns them. [`doc/contract/API.md`](API.md) covers the HTTP conventions `app-be` exposes to its own clients, which is a separate concern.
 
-The KB is an event-sourced fact store. Nothing described here is a mutable record. Each shape below is a current-state projection derived from the event log and resolved for a specific viewer role. See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), [ADR 004](../adr/004-fact-model-veracity-and-visibility.md), and [`doc/kb/REQUIREMENTS.md`](../kb/REQUIREMENTS.md).
+The KB is an event-sourced fact store. Nothing described here is a mutable record. Each shape below is a current-state projection derived from the event log and resolved for a specific viewer role. See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 004](../adr/004-fact-model-veracity-and-visibility.md), and [`doc/kb/REQUIREMENTS.md`](../kb/REQUIREMENTS.md).
 
 ## Ownership
 
-**This table is the single source of truth for entity ownership.** Settled in the boundary session of 2026-08-25. [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does; neither restates the table. Other documents link here rather than copying it.
+**This table is the single source of truth for entity ownership.** Settled in the boundary session of 2026-08-25. [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) records why the split falls where it does and does not restate the table. Other documents link here rather than copying it.
 
 | Entity | Owner | Note |
 |---|---|---|
@@ -40,7 +40,7 @@ App-owned entities are ordinary current-state database rows. They are not event-
 
 Application records reference KB entity identifiers, and KB entities may reference application identifiers where the domain requires it -- `Character.ownerUserId`, and `ExpeditionReport`'s links to its expedition and participants.
 
-Both directions are permitted. The application guarantees that identifiers it issues are persistent and stable: once issued, an application identifier is never reused and never changes. The KB stores identifiers, not foreign keys, and enforces no referential integrity against the application's database. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+Both directions are permitted. The application guarantees that identifiers it issues are persistent and stable: once issued, an application identifier is never reused and never changes. The KB stores identifiers, not foreign keys, and enforces no referential integrity against the application's database. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Projection Conventions
 
@@ -82,6 +82,8 @@ Values:
 - `retiredAt`
 
 There is no separate readiness status. Lifecycle state carries draft/readiness semantics.
+
+The KB owns a character's lifecycle state while the character is in the world, from activation onward; application workflows decide the transitions and assert them. A `DRAFT` is a build that is not yet in the world. It is recorded in the KB so the character keeps one identifier and history from creation, but it has no location and is not world knowledge. See `doc/kb/REQUIREMENTS.md`, Draft characters.
 
 Initial lifecycle values:
 
@@ -152,7 +154,7 @@ What remains is a GM's *view* of unverified claims awaiting promotion to canon, 
 
 3. **The redacted-detail projection shape is described but not designed.** The three-state value described under Projection Conventions needs a concrete type in `packages/contract` before the first viewer-differentiated projection is built.
 
-4. **Cross-boundary failure semantics.** Carried from [ADR 003](../adr/003-kb-app-ownership-boundary.md) Open Question 1: an app write plus a KB assertion is two stores and no shared transaction.
+4. **Cross-boundary failure semantics.** Carried from [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) Open Question 1: an app write plus a KB assertion is two stores and no shared transaction.
 
 ## Resolved
 

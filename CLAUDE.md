@@ -136,7 +136,7 @@ comparison against a required minimum tier, never an exact-match check.
 
 Redaction of KB world knowledge is resolved KB-side; the app never receives KB content it must
 hide. The app authorizes queries against its own eight owned entities itself — that is access
-control, not redaction. See `doc/adr/003-kb-app-ownership-boundary.md`.
+control, not redaction. See `doc/adr/002-application-owned-identity-and-scheduling-state.md`.
 
 ---
 
@@ -145,7 +145,7 @@ control, not redaction. See `doc/adr/003-kb-app-ownership-boundary.md`.
 The KB owns the state of the world and its history. The app is an interface onto that state and
 coordinates the adventures that generate expedition reports, which are the change records feeding
 the KB. The KB is event-sourced; the app is not, and stores current state in an ordinary database.
-See `doc/adr/003-kb-app-ownership-boundary.md`.
+See `doc/adr/002-application-owned-identity-and-scheduling-state.md`.
 
 ## Prior-Art References
 

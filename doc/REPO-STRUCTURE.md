@@ -32,11 +32,12 @@ Revisit if it happens twice.
 
 ```
 packages/
-  contract/        Shared API types + fixtures. The seam. Jointly owned.
-                   - openapi.yaml       OpenAPI schema for the KB/app-be interface
+  contract/        Shared KB/app-be boundary types + fixtures. The seam. Jointly owned.
                    - src/index.ts       TypeScript type definitions
   kb/              Knowledge base layer. Facts, events, provenance, redaction.
   app-be/          Application backend. API routes, use cases, scheduling logic.
+                   - openapi.yaml       OpenAPI description of the HTTP API app-be exposes to its
+                                        clients (not yet written; see doc/contract/API.md)
   app-fe/          Application frontend. UI, client-side routing, expedition views.
 
 doc/
@@ -95,7 +96,7 @@ independently without blocking on each other.
 KB side. The app never receives KB world knowledge it must hide.
 
 This is specifically about KB-owned world state. The application owns eight coordination and
-configuration entities of its own (see [ADR 003](adr/003-kb-app-ownership-boundary.md)) and is
+configuration entities of its own (see [ADR 002](adr/002-application-owned-identity-and-scheduling-state.md)) and is
 responsible for authorizing queries against those itself, filtering by the caller's role tier. That
 is access control, not redaction, and it does not involve the KB. A client-side filter is a data
 leak in either case.

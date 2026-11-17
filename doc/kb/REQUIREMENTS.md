@@ -11,13 +11,14 @@ The KB does not schedule play, validate gameplay rules, or drive workflows. Thos
 
 The KB is implemented as an event-sourced fact store. See [ADR 001](../adr/001-event-sourced-fact-store.md).
 
-The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Scope and Boundary
 
 ### The KB owns
 
 - The persistent identity of campaign entities, beginning with Characters and Locations.
+- A character's lifecycle state while the character is in the world -- from activation onward, including retirement and death. Application workflows decide the transitions and assert them; the KB is their record.
 - The complete, append-only record of changes to those entities.
 - Provenance for every recorded change: author, source, and timestamp.
 - Visibility resolution, deciding what content a viewer in a given role may receive.
@@ -26,9 +27,13 @@ The KB runs as a service exposing an API that `app-be` calls. It is not an in-pr
 ### The application layer owns
 
 - Users, campaign membership, and role assignment.
-- Character lifecycle for play purposes, commitments, downtime, and derived availability.
+- Character lifecycle workflows -- validating and deciding transitions such as activation and retirement -- plus commitments, downtime, and derived availability.
 - Scheduling, GM capacity, Calls to Adventure, and expeditions.
 - Natural-language intent interpretation and domain workflow validation.
+
+### Draft characters
+
+A `DRAFT` character is a build that is not yet in the world -- a theoretical character a player is preparing. It may still be recorded in the KB, so that every character has one identifier and one history from creation and drafts are tracked and managed like any other character data. A draft is not world state: it has no location, and its lifecycle becomes world state only when it is activated.
 
 ### The two keep separate records
 
@@ -147,7 +152,7 @@ Records are never modified after being written.
 - Initial visibility levels are `PUBLIC`, `CAMPAIGN`, and `GM_ONLY`, matching the application's levels.
 - Viewer roles are the tiers defined in [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. An Administrator therefore sees everything a GM sees.
 - Viewer role is a parameter of every read. There is no unfiltered read that the application then filters.
-- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md).
 - Redaction is resolved inside the KB. Content the viewer may not see never crosses the boundary. Client-side filtering is a data leak and is out of scope by design.
 - A projection for a given viewer is computed from the subset of the record that viewer may see. Two viewers with different roles may legitimately see different current states for the same entity.
 - Each entry carries an effect visibility and a detail visibility, as described in Core Principles. Detail visibility is never wider than effect visibility.
@@ -218,8 +223,11 @@ End-state demonstration:
 2. **Retraction of a fact that others depend on.** When a superseded fact was the basis for later facts, does retraction cascade, invalidate, or merely recompute?
 3. **Is `ProposedChange` still a KB entity** now that player world-claims enter the log as rumors, or does the GM review queue become an application-side view? See [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) Open Item 1.
 4. **Veracity beyond two values.** `RUMOR` and `CANON` may prove too coarse -- a GM-corroborated player report is neither.
-5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 003](../adr/003-kb-app-ownership-boundary.md) Open Question 1.
+5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) Open Question 1.
 6. **Hidden entries with observable effects.** A hidden entry may change something the viewer can otherwise observe -- a secret curse that lowers a stat the player reads. Either that fact type pins its effect, and the curse cannot be hidden, or the player sees a value they cannot reconcile with the history they are shown. Which fact types may carry hidden entries, and what the viewer sees of a value a hidden entry contributes to, needs a rule before the first such fact type is registered.
+7. **Visible entries that reference hidden entities.** A GM-only NPC gives gold to a player's character. The gold entry cannot be hidden, but the NPC can, leaving the player's provenance pointing at an entity they may not see. Either the write is rejected, or the reference projects as a redacted stub ("an unknown benefactor"). Decide before the first fact type that references another entity is registered.
+8. **Fold order: record time or world time.** An expedition report filed today may describe events of three weeks ago. Folding gold in the order entries were recorded and folding it in the order the events happened in the world can give different intermediate balances. Each fact type needs to say which order it folds in, and the record needs a world-time field if any fact type folds by it.
+9. **Who sees a draft.** A draft is not world knowledge, but the visibility levels are tier-based (`PUBLIC`, `CAMPAIGN`, `GM_ONLY`). Owner-only visibility -- the player and GMs see a draft, other players do not -- is not expressible in the current model.
 
 ## Resolved Questions
 
