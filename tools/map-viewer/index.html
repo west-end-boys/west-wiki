@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Western Reaches — Map Viewer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface:   #fcfcfb;
+    --panel:     #f2f1ee;
+    --border:    #d8d6d0;
+    --ink:       #0b0b0b;
+    --ink-2:     #52514e;
+    --ink-3:     #8a8880;
+    --accent:    #2a78d6;
+    --danger:    #c0392b;
+    --hex-stroke: rgba(0,0,0,.18);
+    --region-stroke: #0b0b0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: #1a1a19; --panel: #232322; --border: #383734;
+      --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #8a8880;
+      --accent: #3987e5; --danger: #e66767;
+      --hex-stroke: rgba(255,255,255,.14);
+      --region-stroke: #f0efec;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface: #1a1a19; --panel: #232322; --border: #383734;
+    --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #8a8880;
+    --accent: #3987e5; --danger: #e66767;
+    --hex-stroke: rgba(255,255,255,.14);
+    --region-stroke: #f0efec;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid; grid-template-columns: 300px 1fr;
+    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--surface); color: var(--ink);
+  }
+
+  /* ---------- panel ---------- */
+  #panel {
+    background: var(--panel); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px;
+  }
+  h1 { font-size: 14px; margin: 0; letter-spacing: .01em; }
+  h1 small { display: block; font-weight: 400; color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+  fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px 11px; margin: 0; }
+  legend { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); padding: 0 4px; }
+  label { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
+  select, input[type="number"], textarea, button {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px;
+  }
+  select, textarea { width: 100%; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; resize: vertical; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .row > * { flex: 1; }
+
+  /* ---------- legend swatches ---------- */
+  .key { display: grid; grid-template-columns: auto 1fr; gap: 3px 7px; align-items: center; font-size: 11.5px; }
+  .sw { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--hex-stroke); }
+  .key span { color: var(--ink-2); }
+
+  /* ---------- readout ---------- */
+  #readout {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+    color: var(--ink-2); min-height: 62px; white-space: pre-line;
+  }
+  #readout b { color: var(--ink); font-weight: 600; }
+  .warn { color: var(--danger); font-weight: 600; }
+
+  /* ---------- canvas ---------- */
+  #stage { position: relative; overflow: hidden; }
+  canvas { display: block; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  #hud {
+    position: absolute; left: 10px; bottom: 10px; pointer-events: none;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink-2);
+  }
+  .stat { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-2); }
+  .stat b { color: var(--ink); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>Western Reaches<small id="subtitle">loading…</small></h1>
+
+  <fieldset>
+    <legend>Colour by</legend>
+    <label><input type="radio" name="mode" value="terrain" checked> Terrain</label>
+    <label><input type="radio" name="mode" value="region"> Region</label>
+    <div style="margin-top:7px">
+      <select id="focus" title="Dim every region but one">
+        <option value="">Focus: all regions</option>
+      </select>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Overlays</legend>
+    <label><input type="checkbox" id="o-unknown" checked> Flag UNKNOWN</label>
+    <label><input type="checkbox" id="o-borders" checked> Region borders</label>
+    <label><input type="checkbox" id="o-labels" checked> Region names</label>
+    <label><input type="checkbox" id="o-conn" checked> Rivers &amp; paths</label>
+    <label><input type="checkbox" id="o-loc" checked> Locations</label>
+    <label><input type="checkbox" id="o-refs"> Hex refs (zoom in)</label>
+    <div class="row" style="margin-top:7px">
+      <span style="flex:0 0 auto;color:var(--ink-3)">Column</span>
+      <input type="number" id="col-jump" min="0" max="63" placeholder="0–63">
+      <button id="col-clear" style="flex:0 0 auto">clear</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Under cursor</legend>
+    <div id="readout">move over the map…</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Corrections</legend>
+    <div style="color:var(--ink-3);font-size:11px;margin-bottom:6px">
+      Click hexes to select. Shift-click drags a range down a column.
+    </div>
+    <div class="row">
+      <select id="paint-field">
+        <option value="terrain">terrain →</option>
+        <option value="regionId">region →</option>
+      </select>
+      <select id="paint-value"></select>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="apply-paint" class="primary">Assign</button>
+      <button id="clear-sel">Clear</button>
+    </div>
+    <div class="stat" style="margin-top:8px"><span>selected</span><b id="sel-count">0</b></div>
+    <div class="stat"><span>staged</span><b id="stage-count">0</b></div>
+    <textarea id="out" rows="7" readonly placeholder="staged corrections appear here in map-import format"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button id="copy">Copy</button>
+      <button id="reset">Discard staged</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Key</legend>
+    <div class="key" id="key"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Progress</legend>
+    <div class="stat"><span>hexes</span><b id="n-hex">—</b></div>
+    <div class="stat"><span>terrain UNKNOWN</span><b id="n-tu">—</b></div>
+    <div class="stat"><span>region UNKNOWN</span><b id="n-ru">—</b></div>
+    <div class="stat"><span>columns w/ regions</span><b id="n-cols">—</b></div>
+  </fieldset>
+
+  <button id="reload">Reload map.json</button>
+</div>
+
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="hud">drag to pan · wheel to zoom · double-click to fit</div>
+</div>
+
+<script type="module">
+// Grid geometry — the stagger, adjacency and ref notation — lives in
+// geometry.js so it can be unit tested against data/maps/README.md.
+import { SQRT3, centre, corners, refOf, edgeNeighbours, inHex } from "./geometry.js";
+
+// ---------------------------------------------------------------------------
+// Palettes
+// ---------------------------------------------------------------------------
+const TERRAIN = {
+  "ocean":      "#2f6fa8",
+  "arctic sea": "#b3cfe0",
+  "lake":       "#58a8d8",
+  "river":      "#3590c4",
+  "grassland":  "#9cc06b",
+  "forest":     "#3f7d42",
+  "jungle":     "#1d6b47",
+  "swamp":      "#6d7f4a",
+  "desert":     "#e0c781",
+  "mountain":   "#8f8679",
+  "volcano":    "#6d392d",
+  "lava":       "#d6563a",
+  "UNKNOWN":    "#ff35b0",
+};
+// Chosen by maximising separation across the region pairs that actually BORDER
+// each other (computed from the hex data), not across all pairs — on a map,
+// regions that never touch need no hue separation. Identity is additionally
+// carried by borders, direct labels and the hover readout, never hue alone.
+const REGION_LIGHT = {
+  "gloaming": "#eda100", "last-sea": "#008300", "andrik": "#2a78d6",
+  "tal-yool": "#1baf7a", "bastion": "#e34948", "montmar": "#6250d6",
+  "lowland":  "#e87ba4", "UNKNOWN": "#cfcdc6",
+};
+const REGION_DARK = {
+  "gloaming": "#c98500", "last-sea": "#008300", "andrik": "#3987e5",
+  "tal-yool": "#199e70", "bastion": "#e66767", "montmar": "#9085e9",
+  "lowland":  "#d55181", "UNKNOWN": "#403f3b",
+};
+const isDark = () =>
+  document.documentElement.dataset.theme === "dark" ||
+  (document.documentElement.dataset.theme !== "light" &&
+   matchMedia("(prefers-color-scheme: dark)").matches);
+const regionColour = (id) => (isDark() ? REGION_DARK : REGION_LIGHT)[id] ?? "#999";
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let MAP = null, byKey = new Map(), regionName = new Map();
+const view = { s: 9, ox: 0, oy: 0 };
+const ui = {
+  mode: "terrain", focus: "", col: null,
+  unknown: true, borders: true, labels: true, conn: true, loc: true, refs: false,
+};
+const selected = new Set();           // "col/row"
+const staged = new Map();             // "col/row" -> { field, value }
+let hovered = null, lastClicked = null;
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("c"), ctx = canvas.getContext("2d");
+const kOf = (c, r) => `${c}/${r}`;
+
+// ---------------------------------------------------------------------------
+// Load
+// ---------------------------------------------------------------------------
+async function load() {
+  const res = await fetch("./map.json", { cache: "no-store" });
+  if (!res.ok) throw new Error(`map.json: ${res.status}`);
+  MAP = await res.json();
+  byKey = new Map(MAP.hexes.map((h) => [kOf(h.x / 100, h.y), h]));
+  regionName = new Map(MAP.regions.map((r) => [r.id, r.name]));
+
+  $("subtitle").textContent = `${MAP.map.name} · ${MAP.hexes.length} hexes`;
+  const focus = $("focus");
+  focus.innerHTML = '<option value="">Focus: all regions</option>';
+  for (const r of MAP.regions) focus.add(new Option(r.name, r.id));
+  focus.add(new Option("(unassigned)", "UNKNOWN"));
+
+  buildPaintValues();
+  buildKey();
+  stats();
+  fit();
+}
+
+function buildPaintValues() {
+  const sel = $("paint-value");
+  const field = $("paint-field").value;
+  sel.innerHTML = "";
+  const vals = field === "terrain"
+    ? Object.keys(TERRAIN).filter((t) => t !== "UNKNOWN").concat("UNKNOWN")
+    : MAP.regions.map((r) => r.id);
+  for (const v of vals) sel.add(new Option(v, v));
+}
+
+function buildKey() {
+  const k = $("key");
+  k.innerHTML = "";
+  const entries = ui.mode === "terrain"
+    ? Object.entries(TERRAIN)
+    : [...MAP.regions.map((r) => [r.name, regionColour(r.id)]), ["(unassigned)", regionColour("UNKNOWN")]];
+  for (const [name, colour] of entries) {
+    const sw = document.createElement("div");
+    sw.className = "sw"; sw.style.background = colour;
+    const lb = document.createElement("span"); lb.textContent = name;
+    k.append(sw, lb);
+  }
+}
+
+function stats() {
+  const tu = MAP.hexes.filter((h) => h.terrain === "UNKNOWN").length;
+  const ru = MAP.hexes.filter((h) => h.regionId === "UNKNOWN").length;
+  const cols = new Set(MAP.hexes.filter((h) => h.regionId !== "UNKNOWN").map((h) => h.x / 100));
+  $("n-hex").textContent = MAP.hexes.length;
+  $("n-tu").textContent = tu;
+  $("n-ru").textContent = ru;
+  $("n-cols").textContent = `${cols.size} / 64`;
+}
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+function resize() {
+  const r = $("stage").getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+  canvas.style.width = `${r.width}px`; canvas.style.height = `${r.height}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+
+function fit() {
+  const r = $("stage").getBoundingClientRect();
+  const w = 64 * 1.5 + 0.5, h = 75.5 * SQRT3;
+  view.s = Math.max(2, Math.min((r.width - 40) / w, (r.height - 40) / h));
+  view.ox = Math.max(20, (r.width - w * view.s) / 2);
+  view.oy = Math.max(20, (r.height - h * view.s) / 2);
+  draw();
+}
+
+function effective(h) {
+  const st = staged.get(kOf(h.x / 100, h.y));
+  return {
+    terrain:  st?.field === "terrain"  ? st.value : h.terrain,
+    regionId: st?.field === "regionId" ? st.value : h.regionId,
+  };
+}
+
+function fillOf(h) {
+  const e = effective(h);
+  if (ui.mode === "terrain") return TERRAIN[e.terrain] ?? "#777";
+  return regionColour(e.regionId);
+}
+
+function draw() {
+  if (!MAP) return;
+  const r = canvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+  ctx.fillRect(0, 0, r.width, r.height);
+
+  const s = view.s;
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+
+  // --- hex fills ---
+  for (const h of MAP.hexes) {
+    const col = h.x / 100, row = h.y;
+    const [cx, cy] = centre(col, row, s);
+    if (cx < -s - view.ox || cx > r.width - view.ox + s) continue;
+    if (cy < -s - view.oy || cy > r.height - view.oy + s) continue;
+
+    const e = effective(h);
+    const dim = (ui.focus && ui.mode === "region" && e.regionId !== ui.focus)
+             || (ui.col !== null && col !== ui.col);
+
+    ctx.beginPath();
+    const p = corners(cx, cy, s);
+    ctx.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < 6; i++) ctx.lineTo(p[i][0], p[i][1]);
+    ctx.closePath();
+
+    ctx.globalAlpha = dim ? 0.17 : 1;
+    ctx.fillStyle = fillOf(h);
+    ctx.fill();
+
+    // UNKNOWN flag — the to-do list, so make it shout
+    const unk = ui.mode === "terrain" ? e.terrain === "UNKNOWN" : e.regionId === "UNKNOWN";
+    if (ui.unknown && unk && !dim) {
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = Math.max(1, s / 7);
+      for (let d = -2 * s; d < 2 * s; d += Math.max(3, s / 2.2)) {
+        ctx.beginPath(); ctx.moveTo(cx + d, cy - s); ctx.lineTo(cx + d + 2 * s, cy + s); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    if (s >= 4) {
+      ctx.globalAlpha = dim ? 0.17 : 1;
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--hex-stroke");
+      ctx.lineWidth = 0.6; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (staged.has(kOf(col, row))) {
+      ctx.strokeStyle = "#ff8c00"; ctx.lineWidth = Math.max(1.4, s / 5); ctx.stroke();
+    }
+    if (selected.has(kOf(col, row))) {
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(1.6, s / 4); ctx.stroke();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = Math.max(.7, s / 10); ctx.stroke();
+    }
+  }
+
+  // --- region borders: secondary encoding, so identity never rests on hue ---
+  if (ui.borders && s >= 3) {
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--region-stroke");
+    ctx.lineWidth = Math.max(1, s / 5); ctx.lineCap = "round";
+    for (const h of MAP.hexes) {
+      const col = h.x / 100, row = h.y;
+      const mine = effective(h).regionId;
+      if (mine === "UNKNOWN") continue;
+      const [cx, cy] = centre(col, row, s);
+      const p = corners(cx, cy, s);
+      const nbs = edgeNeighbours(col, row);
+      for (let i = 0; i < 6; i++) {
+        const o = byKey.get(kOf(nbs[i][0], nbs[i][1]));
+        const theirs = o ? effective(o).regionId : null;
+        if (theirs === mine) continue;
+        ctx.beginPath();
+        ctx.moveTo(p[i][0], p[i][1]);
+        ctx.lineTo(p[(i + 1) % 6][0], p[(i + 1) % 6][1]);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // --- connections ---
+  if (ui.conn) {
+    for (const c of MAP.connections) {
+      const a = centre(c.from.x / 100, c.from.y, s);
+      const b = centre(c.to.x / 100, c.to.y, s);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      ctx.lineWidth = Math.max(1.5, s / 3.5);
+      ctx.setLineDash(c.type === "path" ? [s / 2.2, s / 2.2] : []);
+      ctx.strokeStyle = c.type === "path" ? "#7a5a3a" : "#2fa8e0";
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  // --- locations ---
+  if (ui.loc) {
+    for (const l of MAP.locations) {
+      const [cx, cy] = centre(l.hex.x / 100, l.hex.y, s);
+      const rr = Math.max(3, s / 2.1);
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111"; ctx.stroke();
+      if (s >= 7) {
+        ctx.font = `600 ${Math.max(10, s * 0.95)}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.lineWidth = 3; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+        ctx.strokeText(l.name, cx, cy - rr - 2);
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink");
+        ctx.fillText(l.name, cx, cy - rr - 2);
+      }
+    }
+  }
+
+  // --- region direct labels ---
+  if (ui.labels && ui.mode === "region") {
+    const acc = new Map();
+    for (const h of MAP.hexes) {
+      const id = effective(h).regionId;
+      if (id === "UNKNOWN") continue;
+      const [cx, cy] = centre(h.x / 100, h.y, s);
+      const a = acc.get(id) ?? { x: 0, y: 0, n: 0 };
+      a.x += cx; a.y += cy; a.n++; acc.set(id, a);
+    }
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `600 ${Math.max(11, s * 1.5)}px ui-sans-serif, system-ui, sans-serif`;
+    // Biggest region first, and skip any label that would collide with one
+    // already placed — small adjacent regions otherwise stack illegibly.
+    const placed = [];
+    for (const [id, a] of [...acc].sort((p, q) => q[1].n - p[1].n)) {
+      if (ui.focus && id !== ui.focus) continue;
+      const label = regionName.get(id) ?? id;
+      const x = a.x / a.n, y = a.y / a.n;
+      const w = ctx.measureText(label).width, h = Math.max(11, s * 1.5);
+      const box = { l: x - w / 2, r: x + w / 2, t: y - h / 2, b: y + h / 2 };
+      if (placed.some((p) => box.l < p.r && box.r > p.l && box.t < p.b && box.b > p.t)) continue;
+      placed.push(box);
+      ctx.lineWidth = 4; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+      ctx.strokeText(label, x, y);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink");
+      ctx.fillText(label, x, y);
+    }
+  }
+
+  // --- hex refs ---
+  if (ui.refs && s >= 11) {
+    ctx.font = `${Math.max(7, s * 0.52)}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink-2");
+    for (const h of MAP.hexes) {
+      const col = h.x / 100;
+      if (ui.col !== null && col !== ui.col) continue;
+      const [cx, cy] = centre(col, h.y, s);
+      ctx.fillText(refOf(col, h.y), cx, cy);
+    }
+  }
+
+  // --- column ruler ---
+  if (s >= 5) {
+    ctx.font = `${Math.max(8, Math.min(11, s * 0.8))}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    for (let col = 0; col < 64; col++) {
+      if (s < 9 && col % 5 !== 0) continue;
+      const [cx] = centre(col, 0, s);
+      ctx.fillStyle = col === ui.col
+        ? getComputedStyle(document.documentElement).getPropertyValue("--accent")
+        : getComputedStyle(document.documentElement).getPropertyValue("--ink-3");
+      ctx.fillText(String(col), cx, -3);
+    }
+  }
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Hit testing
+// ---------------------------------------------------------------------------
+function pick(mx, my) {
+  const s = view.s;
+  const wx = mx - view.ox, wy = my - view.oy;
+  const approx = Math.round((wx - s) / (1.5 * s));
+  for (let col = approx - 1; col <= approx + 1; col++) {
+    if (col < 0 || col > 63) continue;
+    const lat = wy / (SQRT3 * s) - 0.5;
+    const row0 = Math.round(col % 2 === 0 ? lat + 0.5 : lat);
+    for (let row = row0 - 1; row <= row0 + 1; row++) {
+      const h = byKey.get(kOf(col, row));
+      if (!h) continue;
+      const [cx, cy] = centre(col, row, s);
+      if (inHex(wx - cx, wy - cy, s)) return h;
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Corrections — emitted in tools/map-import.ts format
+// ---------------------------------------------------------------------------
+function renderOut() {
+  const terrain = new Map(), cols = new Set();
+  for (const [k, st] of staged) {
+    const [c, r] = k.split("/").map(Number);
+    if (st.field === "terrain") {
+      if (!terrain.has(st.value)) terrain.set(st.value, []);
+      terrain.get(st.value).push([c, r]);
+    } else cols.add(c);
+  }
+
+  const out = [];
+  if (terrain.size) {
+    out.push("[terrain]");
+    const w = Math.max(...[...terrain.keys()].map((t) => t.length)) + 1;
+    for (const [t, hexes] of terrain) {
+      hexes.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      out.push(`${(t + ":").padEnd(w)} ${hexes.map(([c, r]) => refOf(c, r)).join(", ")}`);
+    }
+  }
+
+  // Region mode needs a COMPLETE column — map-import rejects a column with an
+  // uncovered row — so emit the whole column as runs, staged edits folded in.
+  if (cols.size) {
+    if (out.length) out.push("");
+    out.push("[regions]");
+    for (const c of [...cols].sort((a, b) => a - b)) {
+      const rows = MAP.hexes.filter((h) => h.x / 100 === c).map((h) => h.y).sort((a, b) => a - b);
+      const runs = [];
+      for (const r of rows) {
+        const st = staged.get(kOf(c, r));
+        const v = st?.field === "regionId" ? st.value : byKey.get(kOf(c, r)).regionId;
+        const last = runs[runs.length - 1];
+        if (last && last.v === v && last.hi === r - 1) last.hi = r;
+        else runs.push({ v, lo: r, hi: r });
+      }
+      const body = runs.map((x) => `${x.v} ${x.lo === x.hi ? x.lo : `${x.lo}-${x.hi}`}`).join(", ");
+      out.push(`${c}: ${body}`);
+      if (runs.some((x) => x.v === "UNKNOWN"))
+        out.push(`#   ^ column ${c} still has UNKNOWN runs — map-import will reject an undeclared id`);
+    }
+  }
+
+  $("out").value = out.join("\n");
+  $("stage-count").textContent = staged.size;
+  $("sel-count").textContent = selected.size;
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+let drag = null;
+canvas.addEventListener("mousedown", (e) => {
+  drag = { x: e.clientX, y: e.clientY, ox: view.ox, oy: view.oy, moved: false };
+  canvas.classList.add("dragging");
+});
+addEventListener("mousemove", (e) => {
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+    view.ox = drag.ox + dx; view.oy = drag.oy + dy;
+    draw();
+    return;
+  }
+  const r = canvas.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+  const h = pick(e.clientX - r.left, e.clientY - r.top);
+  if (h === hovered) return;
+  hovered = h;
+  const el = $("readout");
+  if (!h) { el.textContent = "move over the map…"; return; }
+  const col = h.x / 100, e2 = effective(h);
+  const loc = MAP.locations.find((l) => l.hex.x === h.x && l.hex.y === h.y);
+  el.innerHTML =
+    `ref  <b>${refOf(col, h.y)}</b>   col ${col}  row ${h.y}\n` +
+    `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${e2.terrain}</b>\n` +
+    `region   <b class="${e2.regionId === "UNKNOWN" ? "warn" : ""}">${regionName.get(e2.regionId) ?? e2.regionId}</b>` +
+    (loc ? `\nlocation <b>${loc.name}</b> (${loc.type})` : "");
+});
+addEventListener("mouseup", (e) => {
+  canvas.classList.remove("dragging");
+  if (!drag) return;
+  const wasDrag = drag.moved; drag = null;
+  if (wasDrag) return;
+  const r = canvas.getBoundingClientRect();
+  const h = pick(e.clientX - r.left, e.clientY - r.top);
+  if (!h) return;
+  const col = h.x / 100, key = kOf(col, h.y);
+  if (e.shiftKey && lastClicked && lastClicked.col === col) {
+    const [lo, hi] = [lastClicked.row, h.y].sort((a, b) => a - b);
+    for (let y = lo; y <= hi; y++) if (byKey.has(kOf(col, y))) selected.add(kOf(col, y));
+  } else {
+    selected.has(key) ? selected.delete(key) : selected.add(key);
+    lastClicked = { col, row: h.y };
+  }
+  renderOut(); draw();
+});
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k = Math.exp(-e.deltaY * 0.0015);
+  const s2 = Math.max(2, Math.min(60, view.s * k));
+  const f = s2 / view.s;
+  view.ox = mx - (mx - view.ox) * f;
+  view.oy = my - (my - view.oy) * f;
+  view.s = s2;
+  draw();
+}, { passive: false });
+canvas.addEventListener("dblclick", fit);
+
+for (const el of document.querySelectorAll('input[name="mode"]'))
+  el.addEventListener("change", (e) => { ui.mode = e.target.value; buildKey(); draw(); });
+$("focus").addEventListener("change", (e) => { ui.focus = e.target.value; draw(); });
+for (const [id, k] of [["o-unknown","unknown"],["o-borders","borders"],["o-labels","labels"],
+                       ["o-conn","conn"],["o-loc","loc"],["o-refs","refs"]])
+  $(id).addEventListener("change", (e) => { ui[k] = e.target.checked; draw(); });
+$("col-jump").addEventListener("input", (e) => {
+  const v = e.target.value === "" ? null : Number(e.target.value);
+  ui.col = v !== null && v >= 0 && v <= 63 ? v : null;
+  draw();
+});
+$("col-clear").addEventListener("click", () => { $("col-jump").value = ""; ui.col = null; draw(); });
+$("paint-field").addEventListener("change", buildPaintValues);
+$("apply-paint").addEventListener("click", () => {
+  const field = $("paint-field").value, value = $("paint-value").value;
+  for (const k of selected) {
+    const [c, r] = k.split("/").map(Number);
+    const cur = byKey.get(kOf(c, r));
+    if ((field === "terrain" ? cur.terrain : cur.regionId) === value) staged.delete(k); // no-op
+    else staged.set(k, { field, value });
+  }
+  selected.clear(); renderOut(); draw();
+});
+$("clear-sel").addEventListener("click", () => { selected.clear(); renderOut(); draw(); });
+$("reset").addEventListener("click", () => { staged.clear(); selected.clear(); renderOut(); draw(); });
+$("copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText($("out").value);
+  const b = $("copy"); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1200);
+});
+$("reload").addEventListener("click", async () => {
+  await load(); staged.clear(); selected.clear(); renderOut(); draw();
+});
+addEventListener("resize", resize);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { buildKey(); draw(); });
+
+// Deep links: ?mode=region&focus=gloaming&col=12&refs=1 — so a particular
+// view can be bookmarked or pasted into an issue.
+function applyQuery() {
+  const q = new URLSearchParams(location.search);
+  const mode = q.get("mode");
+  if (mode === "region" || mode === "terrain") {
+    ui.mode = mode;
+    document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
+  }
+  const focus = q.get("focus");
+  if (focus && [...$("focus").options].some((o) => o.value === focus)) {
+    ui.focus = focus; $("focus").value = focus;
+  }
+  const col = q.get("col");
+  if (col !== null && Number(col) >= 0 && Number(col) <= 63) {
+    ui.col = Number(col); $("col-jump").value = col;
+  }
+  if (q.get("refs") === "1") { ui.refs = true; $("o-refs").checked = true; }
+  buildKey();
+}
+
+await load();
+applyQuery();
+resize();
+renderOut();
+</script>
+</body>
+</html>
