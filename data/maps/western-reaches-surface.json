@@ -6170,13 +6170,13 @@
       "x": 1300,
       "y": 60,
       "regionId": "tal-yool",
-      "terrain": "ocean"
+      "terrain": "river"
     },
     {
       "x": 1300,
       "y": 61,
       "regionId": "tal-yool",
-      "terrain": "jungle"
+      "terrain": "river"
     },
     {
       "x": 1300,
@@ -6200,31 +6200,31 @@
       "x": 1300,
       "y": 65,
       "regionId": "tal-yool",
-      "terrain": "jungle"
+      "terrain": "lava"
     },
     {
       "x": 1300,
       "y": 66,
       "regionId": "tal-yool",
-      "terrain": "grassland"
+      "terrain": "lava"
     },
     {
       "x": 1300,
       "y": 67,
       "regionId": "tal-yool",
-      "terrain": "grassland"
+      "terrain": "mountain"
     },
     {
       "x": 1300,
       "y": 68,
       "regionId": "tal-yool",
-      "terrain": "ocean"
+      "terrain": "mountain"
     },
     {
       "x": 1300,
       "y": 69,
       "regionId": "tal-yool",
-      "terrain": "ocean"
+      "terrain": "mountain"
     },
     {
       "x": 1300,
@@ -6313,146 +6313,146 @@
     {
       "x": 1400,
       "y": 11,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 12,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 13,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 14,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 15,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 16,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 17,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 18,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 19,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 20,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "arctic sea"
     },
     {
       "x": 1400,
       "y": 21,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "ocean"
     },
     {
       "x": 1400,
       "y": 22,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "ocean"
     },
     {
       "x": 1400,
       "y": 23,
-      "regionId": "UNKNOWN",
+      "regionId": "last-sea",
       "terrain": "grassland"
     },
     {
       "x": 1400,
       "y": 24,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
+      "regionId": "lowland",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 25,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 26,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
+      "regionId": "lowland",
+      "terrain": "forest"
     },
     {
       "x": 1400,
       "y": 27,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 28,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 29,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 30,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 31,
-      "regionId": "UNKNOWN",
-      "terrain": "grassland"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 32,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 33,
-      "regionId": "UNKNOWN",
-      "terrain": "ocean"
+      "regionId": "lowland",
+      "terrain": "swamp"
     },
     {
       "x": 1400,
       "y": 34,
       "regionId": "UNKNOWN",
-      "terrain": "ocean"
+      "terrain": "grassland"
     },
     {
       "x": 1400,
