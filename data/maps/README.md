@@ -73,21 +73,57 @@ transcription error. Treat a checkerboard run as a question, never as a bug.
 
 ## Terrain
 
-One value per hex, from this vocabulary:
+One value per hex. **[`terrain-types.json`](terrain-types.json) is the source of truth for the
+vocabulary** - this table is prose about it, and `tools/map-viewer/terrain.test.js` asserts the two
+agree, so neither can drift from the other the way they did before it existed.
 
-| terrain | notes |
-|---|---|
-| `ocean` | open sea south of the arctic line; also inland water, pending a `lake` type |
-| `arctic sea` | frozen sea. The arctic line is `y <= 20`; everything south is `ocean` |
-| `grassland` | |
-| `forest` | |
-| `jungle` | |
-| `swamp` | |
-| `desert` | |
-| `mountain` | |
-| `volcano` | some volcanoes will be ringed by `lava` once that type is added |
-| `river` | a **major** waterway filling the whole hex - impassable without aid |
-| `UNKNOWN` | terrain not yet transcribed, or hidden beneath a map symbol |
+**To add a terrain type:** add an entry to `terrain-types.json`, then add its row here. That is the
+whole procedure. `tools/map-import.ts` refuses a terrain value the registry does not declare, so a
+new type and a typo can no longer look alike.
+
+| terrain | surface | notes |
+|---|---|---|
+| `ocean` | water | open sea south of the arctic line. Also still carries inland water not yet retyped - see below |
+| `arctic sea` | water | frozen sea. The arctic line is `y <= 20`; everything south is `ocean` |
+| `lake` | water | inland water, with no connection to the open sea |
+| `river` | water | a **major** waterway filling the whole hex - impassable without aid |
+| `grassland` | land | |
+| `forest` | land | |
+| `jungle` | land | |
+| `swamp` | land | |
+| `desert` | land | |
+| `salt flat` | land | |
+| `canyon` | land | |
+| `mountain` | land | |
+| `volcano` | land | ringed by `lava` in places |
+| `lava` | land | |
+| `UNKNOWN` | unknown | terrain not yet transcribed, or hidden beneath a map symbol |
+
+`surface` is the intrinsic land/water classification, which the arctic-sea rule and the
+lake-vs-ocean distinction below both depend on. It is a property of the landform.
+
+**Travel cost and terrain difficulty are deliberately not in the registry.**
+[ADR 005](../../doc/adr/005-map-data-ownership-and-location-taxonomy.md) classifies what the rules
+let a character do somewhere as app-owned campaign configuration rather than world data, so travel
+rules key off these ids from the application side. A difficulty column here would put a rules
+number in a world-data record.
+
+### Colours are mimetic, and new ones are measured
+
+Terrain colours imitate the thing - water blue, forest green - so the map reads as a map rather
+than as a categorical chart. Three blues for water and three greens for vegetation are therefore
+deliberate, and the categorical separation gates do not apply to the scheme as a whole.
+
+What does apply is that a **new** type must not be confusable with one already on the map, so new
+colours are measured rather than eyeballed. The existing palette's closest pair is `forest`/`swamp`
+at ΔE 5.8 normal-vision and 2.0 under simulated CVD, and 11 of its 78 pairs fall below the
+categorical floor of 15 - that is the bar a new colour has to clear, not the gates themselves.
+
+- `salt flat` `#f7f3e8` - nearest neighbour `arctic sea`, ΔE 13.5 normal / 11.8 CVD. The two are
+  also latitude-disjoint: arctic sea is `y <= 20` and salt flats are desert.
+- `canyon` `#c98f6b` - nearest `mountain` at ΔE 10.0 normal, `grassland` at 6.2 CVD. Sandstone
+  rather than the obvious terracotta: every red-brown candidate collided with `lava` under CVD, at
+  worst ΔE 0.2, which a protanope would see as the same colour.
 
 ### `UNKNOWN` carries two distinct meanings
 
@@ -99,14 +135,17 @@ Both are legitimate and neither should be guessed at:
   not recoverable from the art, so `UNKNOWN` records "land, type unknown"
   rather than inventing a plausible value
 
-### Inland water has no distinct type yet
+### Inland water is mid-retype
 
-Lakes and inland seas are currently typed `ocean`. A flood fill from the map
-border separates them from open sea - a substantial number of hexes across many
-bodies, from single hexes up to inland seas of thirty or more. Introducing a
-`lake` type would make that distinction explicit; until then, "is this hex
-connected to the open sea" is a topological question, not one the terrain value
-answers.
+`lake` exists and 43 hexes carry it, but the retyping is **not finished**. A flood fill over
+`ocean` and `arctic sea` hexes, seeded from the map border, currently leaves **75 sea-typed hexes
+in 21 disconnected bodies** - sizes 26, 14, 7, 6, 6 and sixteen single hexes, the largest around
+col 44 / row 65.
+
+Those are candidates, not confirmed lakes. A body can be cut off from the fill and still be
+genuine sea: one hex of `river` across a strait disconnects everything behind it. So "is this hex
+connected to the open sea" remains a topological question that wants a look at the poster, not a
+retype that can be inferred from the data alone.
 
 The arctic rule interacts with this: it applies to **open sea only**. A
 mountain lake at `y = 8` is a lake, not arctic sea, so latitude alone must not
