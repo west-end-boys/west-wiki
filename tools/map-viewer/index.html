@@ -202,25 +202,14 @@ import { SQRT3, centre, corners, refOf, edgeNeighbours, inHex } from "./geometry
 import {
   REGION_STYLE, paletteProblems, regionColour as regionColourIn, regionTexture, shade,
 } from "./palette.js";
+// The terrain vocabulary is data, not code: data/maps/terrain-types.json is the
+// source of truth and is fetched at load. terrain.js is only the lookup over it,
+// so this page cannot hold a second, drifting copy of the list.
+import { makeTerrain, terrainProblems } from "./terrain.js";
 
 // ---------------------------------------------------------------------------
 // Palettes
 // ---------------------------------------------------------------------------
-const TERRAIN = {
-  "ocean":      "#2f6fa8",
-  "arctic sea": "#b3cfe0",
-  "lake":       "#58a8d8",
-  "river":      "#3590c4",
-  "grassland":  "#9cc06b",
-  "forest":     "#3f7d42",
-  "jungle":     "#1d6b47",
-  "swamp":      "#6d7f4a",
-  "desert":     "#e0c781",
-  "mountain":   "#8f8679",
-  "volcano":    "#6d392d",
-  "lava":       "#d6563a",
-  "UNKNOWN":    "#ff35b0",
-};
 // Region hues, textures and the separability gates live in ./palette.js, which
 // documents why texture has to be load-bearing on this map. Only the theme
 // lookup belongs here, since it is the one part that needs the DOM.
@@ -235,6 +224,7 @@ const regionColour = (id) => regionColourIn(id, isDark() ? "dark" : "light");
 // State
 // ---------------------------------------------------------------------------
 let MAP = null, byKey = new Map(), regionName = new Map();
+let TERRAIN_REGISTRY = null, terrain = null;
 const view = { s: 9, ox: 0, oy: 0 };
 const ui = {
   mode: "terrain", focus: "", col: null,
@@ -252,6 +242,11 @@ const kOf = (c, r) => `${c}/${r}`;
 // Load
 // ---------------------------------------------------------------------------
 async function load() {
+  const reg = await fetch("/terrain-types.json", { cache: "no-store" });
+  if (!reg.ok) throw new Error(`terrain-types.json: ${reg.status}`);
+  TERRAIN_REGISTRY = await reg.json();
+  terrain = makeTerrain(TERRAIN_REGISTRY);
+
   const res = await fetch("./map.json", { cache: "no-store" });
   if (!res.ok) throw new Error(`map.json: ${res.status}`);
   MAP = await res.json();
@@ -266,7 +261,7 @@ async function load() {
 
   buildPaintValues();
   buildKey();
-  checkPalette();
+  checkPalettes();
   stats();
   fit();
 }
@@ -275,10 +270,12 @@ function buildPaintValues() {
   const sel = $("paint-value");
   const field = $("paint-field").value;
   sel.innerHTML = "";
+  // The option's VALUE is always the stored id; only its text is the label, so
+  // a corrections block still emits exactly what goes on the hex.
   const vals = field === "terrain"
-    ? Object.keys(TERRAIN).filter((t) => t !== "UNKNOWN").concat("UNKNOWN")
-    : MAP.regions.map((r) => r.id);
-  for (const v of vals) sel.add(new Option(v, v));
+    ? terrain.entries.map((t) => [t.label, t.id])
+    : MAP.regions.map((r) => [r.id, r.id]);
+  for (const [text, value] of vals) sel.add(new Option(text, value));
 }
 
 function buildKey() {
@@ -287,7 +284,7 @@ function buildKey() {
   // The swatch must carry the texture too: seven hues are used by two regions
   // each, so colour-only swatches would show seven identical-looking pairs.
   const entries = ui.mode === "terrain"
-    ? Object.entries(TERRAIN).map(([name, colour]) => [name, colour, "solid"])
+    ? terrain.entries.map((t) => [t.label, t.colour, "solid"])
     : [...MAP.regions.map((r) => [r.name, regionColour(r.id), regionTexture(r.id)]),
        ["(unassigned)", regionColour("UNKNOWN"), "solid"]];
   for (const [name, colour, texture] of entries) {
@@ -302,16 +299,20 @@ function buildKey() {
 }
 
 /**
- * Report anything the palette no longer resolves. The border graph grows with
- * every column transcribed — four regions have no hexes yet — so the
- * assignment is checked against the data on each load rather than trusted.
+ * Report anything either palette no longer resolves, checked against the data
+ * on each load rather than trusted. Two independent drifts are possible: the
+ * region border graph changes as regions are redrawn, and a terrain value can
+ * reach the map without being declared in terrain-types.json.
  */
-function checkPalette() {
+function checkPalettes() {
   const log = $("palette-log");
-  const problems = paletteProblems(MAP);
+  const problems = [
+    ...terrainProblems(TERRAIN_REGISTRY, MAP),
+    ...paletteProblems(MAP),
+  ];
   log.className = problems.length ? "bad" : "";
   log.textContent = problems.length
-    ? `palette needs revisiting:\n${problems.map((p) => `  ${p}`).join("\n")}`
+    ? `needs revisiting:\n${problems.map((p) => `  ${p}`).join("\n")}`
     : "";
 }
 
@@ -356,7 +357,7 @@ function effective(h) {
 
 function fillOf(h) {
   const e = effective(h);
-  if (ui.mode === "terrain") return TERRAIN[e.terrain] ?? "#777";
+  if (ui.mode === "terrain") return terrain.colour(e.terrain);
   return regionColour(e.regionId);
 }
 
@@ -654,7 +655,7 @@ addEventListener("mousemove", (e) => {
   const loc = MAP.locations.find((l) => l.hex.x === h.x && l.hex.y === h.y);
   el.innerHTML =
     `ref  <b>${refOf(col, h.y)}</b>   col ${col}  row ${h.y}\n` +
-    `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${e2.terrain}</b>\n` +
+    `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${terrain.label(e2.terrain)}</b>\n` +
     `region   <b class="${e2.regionId === "UNKNOWN" ? "warn" : ""}">${regionName.get(e2.regionId) ?? e2.regionId}</b>` +
     (loc ? `\nlocation <b>${loc.name}</b> (${loc.type})` : "");
 });
