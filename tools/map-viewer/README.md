@@ -125,9 +125,21 @@ format itself.
 
 Shape, not colour, so the two survive a greyscale print and a CVD reader; both
 are directly labelled with the place name once zoomed in far enough, and the
-hover readout names the kind and scale. A `hidden` location — GM-only, standing
-in for ADR 004 effect visibility — is drawn with a **dashed** outline, so it
-cannot be transcribed as a public one by mistake.
+hover readout names the kind and scale.
+
+**A restricted place is drawn with a dashed outline.** `visibleTo` names the
+lowest viewer tier that may see it — `ANONYMOUS`, `PLAYER`, `GM`,
+`ADMINISTRATOR`, the ordered hierarchy of
+[app-be ADR 004](../../doc/app-be/adr/004-role-based-permission-tiers.md).
+Public is solid, anything narrower is dashed, and **which** tier is appended to
+the place's label (`Myre Castle Ruins · GM`) and named in the hover readout.
+
+The outline says restricted or not, and nothing finer, deliberately. Dash
+density was tried first as an ordinal ramp over the four tiers and rejected on
+looking at it: a mark is about six pixels across at working zoom, and three dash
+densities over that span are not rankable by eye. An encoding that implies a
+distinction the reader cannot make is worse than one that does not try — so the
+tier is carried as text, where it is unambiguous.
 
 The arrays were briefly split, `settlements` and `locations`, and this page read
 `locations` only: the map's one settlement stopped drawing and `npm test` stayed

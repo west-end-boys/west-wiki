@@ -223,18 +223,46 @@ enforces this, since JSON cannot.
   "kind": "settlement",
   "scale": "village",
   "hex": { "x": 4000, "y": 29 },
-  "hidden": false,
+  "visibleTo": "ANONYMOUS",
   "isSafe": true,
   "allowsCharacterActivation": true
 }
 ```
 
-`hidden` is a **staging stand-in** for the effect visibility of
-[ADR 004](../../doc/adr/004-fact-model-veracity-and-visibility.md), which
-resolves KB-side per viewer. A boolean in a file cannot do that, so it will not
-survive into the contract - it is here so a GM-only place is not transcribed as
-a public one. `isSafe` and `allowsCharacterActivation` are app-owned
-affordances, which is why they sit on the settlement arm only.
+`isSafe` and `allowsCharacterActivation` are app-owned affordances, which is why
+they sit on the settlement arm only.
+
+### Who can see it
+
+`visibleTo` names the **lowest viewer tier** that may see the place on the map.
+The tiers are the ordered hierarchy of
+[app-be ADR 004](../../doc/app-be/adr/004-role-based-permission-tiers.md),
+spelled as `ViewerRole` in `packages/app-be/src/index.ts`:
+
+| visibleTo | Who sees it |
+|---|---|
+| `ANONYMOUS` | everyone, including visitors who are not in the campaign |
+| `PLAYER` | campaign members and above |
+| `GM` | GMs and administrators |
+| `ADMINISTRATOR` | administrators only |
+
+It is a **floor, not a match** - a GM-only place is visible to an administrator
+for the same reason a GM can do everything a player can. ADR 004 is explicit
+that authorization is a rank comparison against a required minimum tier.
+
+**There is no default.** A location with no `visibleTo` is an error rather than
+a public one, because defaulting would publish a GM-only place by omission, and
+that is the one direction this field must never fail in. For the same reason an
+unrecognised tier ranks *above* administrator rather than below anonymous: a
+typo conceals, it does not reveal.
+
+**This is not the whole of visibility, and it cannot be.** A rank is
+campaign-wide, so it cannot say that one party has found a ruin and another has
+not - both are `PLAYER`. That is per-viewer world knowledge, which
+[ADR 004](../../doc/adr/004-fact-model-veracity-and-visibility.md) resolves
+KB-side, and it is the characteristic West Marches case. The two compose rather
+than compete: `visibleTo` decides who may **ever** see a place, and the KB
+decides who sees it **yet**.
 
 ### Where this is going
 
