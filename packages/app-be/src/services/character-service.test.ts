@@ -7,7 +7,7 @@ import type {
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
-import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import type { ActorContext } from "../kb/knowledge-base-gateway.js";
 import { InMemoryCampaignStore } from "../store/in-memory-campaign-store.js";
 import { CharacterService } from "./character-service.js";
 
@@ -31,7 +31,7 @@ const marinsHold: LocationSummary = {
   allowsCharacterActivation: true,
 };
 
-const context: ViewerContext = {
+const context: ActorContext = {
   userId: "player-1",
   viewerRole: "PLAYER",
 };

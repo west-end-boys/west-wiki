@@ -103,8 +103,8 @@ Concretely:
   migrations, and cache invalidation require more careful design. This is accepted because the
   requirements for retraction and derived value recomputation cannot be satisfied simply without it.
 - **The "one source of truth" is the event log, not the wiki page.** Teams accustomed to editing a
-  record in place will need to adjust. The HANDOFF noted this should be communicated early, before
-  any application screens are designed.
+  record in place will need to adjust. This should be communicated early, before any application
+  screens are designed.
 
 ---
 
@@ -138,16 +138,31 @@ Concretely:
   `doc/adr/004-fact-model-veracity-and-visibility.md` as fact-type versioning, and is still open.
 - **Open question 3, partial retraction UX**, is resolved as deferred per the first bullet.
 
-`doc/adr/003-kb-app-ownership-boundary.md` scopes which entities this store is responsible for, and
+`doc/adr/002-application-owned-identity-and-scheduling-state.md` scopes which entities this store is responsible for, and
 `doc/adr/004-fact-model-veracity-and-visibility.md` defines the entry structure this ADR left open.
+
+**2026-11-17.** Two parts of this ADR have been overtaken by
+`doc/adr/004-fact-model-veracity-and-visibility.md`.
+
+- **Requirement 5 and the event-level GM review it implies.** No longer holds. A player's
+  assertions about their own characters, a player's claims about the world (as `RUMOR`), and LLM
+  extractions from a human's submission (as `RUMOR`, under that human's authorship) all enter the
+  log without GM approval. A GM curates continuously -- promoting a rumor by asserting canon,
+  contradicting it, or retracting it -- rather than approving entries before they are recorded. The
+  consequence "The GM review workflow is event-level: approve or reject a proposed event before it
+  enters the log" is withdrawn. The LLM still never asserts `CANON`.
+- **Requirement 1, history always visible.** Narrowed by ADR 004's 2026-11-17 amendment: an entry
+  may be hidden from a viewer entirely, in which case it does not appear in that viewer's history.
+  Content-level redaction remains the mechanism for everything short of that.
+
+The decision itself -- an event-sourced fact store with the wiki as a projection -- is unchanged.
 
 ## References
 
 - `doc/REPO-STRUCTURE.md` — contract boundary, redaction policy, ADR scope rules
-- `doc/adr/003-kb-app-ownership-boundary.md` — entity ownership, trust model, KB as a service
+- `doc/adr/002-application-owned-identity-and-scheduling-state.md` — entity ownership, trust model, KB as a service
 - `doc/adr/004-fact-model-veracity-and-visibility.md` — entry kinds, registry, veracity, visibility
 - `doc/kb/REQUIREMENTS.md` — KB-layer requirements
-- `doc/contract/API.md` — normative boundary spec
-- HANDOFF.md blocker 3 — "event sourcing is decided-by-implication but not decided-explicitly"
+- `doc/contract/KB-PROJECTIONS.md` — normative KB/app boundary: entity ownership and projection shapes
 - Google Doc: "Living LLM Wiki" — original requirements including retraction, provenance, derived
   values

@@ -5,17 +5,26 @@ import type {
   CharacterSummary,
   LocationId,
   LocationSummary,
+  MembershipRole,
   UserId,
 } from "../index.js";
 
-export type ViewerRole = "PLAYER" | "GM" | "ADMINISTRATOR";
-
-export interface ViewerContext {
-  userId: UserId;
-  viewerRole: ViewerRole;
+/** A viewer with no campaign membership (or no session). Read-only. */
+export interface AnonymousViewerContext {
+  viewerRole: "ANONYMOUS";
 }
 
-export type ActorContext = ViewerContext;
+/** An authenticated, active campaign member. */
+export interface MemberViewerContext {
+  userId: UserId;
+  viewerRole: MembershipRole;
+}
+
+/** Who a KB read is resolved for. Every read takes one. */
+export type ViewerContext = AnonymousViewerContext | MemberViewerContext;
+
+/** Who is asserting. Writes always come from a member; anonymous viewers cannot write. */
+export type ActorContext = MemberViewerContext;
 
 export interface ActivateCharacterEventInput {
   characterId: CharacterId;

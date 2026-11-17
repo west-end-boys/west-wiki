@@ -1,7 +1,7 @@
 # Knowledge Base Requirements
 
 Status: Draft  
-Last updated: September 15, 2026
+Last updated: November 17, 2026
 
 ## Purpose
 
@@ -11,30 +11,35 @@ The KB does not schedule play, validate gameplay rules, or drive workflows. Thos
 
 The KB is implemented as an event-sourced fact store. See [ADR 001](../adr/001-event-sourced-fact-store.md).
 
-The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+The KB runs as a service exposing an API that `app-be` calls. It is not an in-process library of the application. Both sit inside a single trust boundary: the KB accepts the actor context the application supplies rather than independently re-establishing identity. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Scope and Boundary
 
 ### The KB owns
 
 - The persistent identity of campaign entities, beginning with Characters and Locations.
+- A character's lifecycle state while the character is in the world -- from activation onward, including retirement and death. Application workflows decide the transitions and assert them; the KB is their record.
 - The complete, append-only record of changes to those entities.
-- Provenance for every recorded change: author, source, timestamp, and approval trail.
+- Provenance for every recorded change: author, source, and timestamp.
 - Visibility resolution, deciding what content a viewer in a given role may receive.
 - Current-state and derived values computed from the record.
 
 ### The application layer owns
 
 - Users, campaign membership, and role assignment.
-- Character lifecycle for play purposes, commitments, downtime, and derived availability.
+- Character lifecycle workflows -- validating and deciding transitions such as activation and retirement -- plus commitments, downtime, and derived availability.
 - Scheduling, GM capacity, Calls to Adventure, and expeditions.
 - Natural-language intent interpretation and domain workflow validation.
+
+### Draft characters
+
+A `DRAFT` character is a build that is not yet in the world -- a theoretical character a player is preparing. It may still be recorded in the KB, so that every character has one identifier and one history from creation and drafts are tracked and managed like any other character data. A draft is not world state: it has no location, and its lifecycle becomes world state only when it is activated.
 
 ### The two keep separate records
 
 The application maintains its own operational records that reference KB entity identifiers. An application character record and a KB character entity are not the same record and do not share a shape. The application holds what it needs in order to schedule; the KB holds what is true about the world.
 
-[`doc/app-be/SPECS.md`](../app-be/SPECS.md) describes the shape the application expects to consume. It is the consumer-side statement of the projection surface and serves as an input to the normative boundary specification in `doc/contract/API.md`. It is not itself the contract. See [`doc/REPO-STRUCTURE.md`](../REPO-STRUCTURE.md) for why the wire contract does not live in either application's specifications.
+[`doc/app-be/SPECS.md`](../app-be/SPECS.md) describes the shape the application expects to consume. It is the consumer-side statement of the projection surface and serves as an input to the normative boundary specification in [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md). It is not itself the contract. See [`doc/REPO-STRUCTURE.md`](../REPO-STRUCTURE.md) for why the wire contract does not live in either application's specifications.
 
 ## Goals
 
@@ -52,9 +57,9 @@ Not priorities for the first release. Several are directions the design delibera
 
 - **Runtime-defined fact types and entity types.** The fact-type registry is a deployment artifact for the initial release -- every fact type is known to the codebase. Emergent definition of new fact and entity types at runtime, and the ontology-as-configuration model that would follow from it, is the direction this design is built to allow. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 - **A universal world-building ontology.** The generic case is a longer-term ambition, not an initial deliverable.
-- **Retraction at sub-sentence or implied-fact granularity.** The event model supports it; the review UI for selecting individual implied facts does not exist. Revisit once the moderation workflow exists.
+- **Retraction at sub-sentence or implied-fact granularity.** The event model supports it; the curation UI for selecting individual implied facts does not exist. Revisit once the curation workflow exists.
 - **Hierarchical and multi-subject facts.** The initial release supports facts about a single subject entity.
-- **Autonomous acceptance of changes proposed by an LLM.** The LLM is never an authorized author and this is not expected to change.
+- **LLM-asserted canon.** The LLM is never an authorized author and cannot assert `CANON`; this is not expected to change. Its extractions are recorded as `RUMOR` under the submitting human's authorship -- see Authority Requirements.
 - **Natural-language interpretation**, which belongs to the application layer.
 - **Scheduling, availability calculation, or any gameplay rule enforcement**, which belong to the application layer.
 - **Public multi-tenant hosting.**
@@ -80,19 +85,23 @@ Rumors are recorded, not withheld. A player's claim about the world enters the l
 
 Veracity is orthogonal to visibility. Visibility says who may see an entry; veracity says how much it can be relied on. A rumor may be public; a canonical fact may be GM-only.
 
-### Visibility is hybrid: the effect is visible, the detail may not be
+### Visibility is per entry, and the effect and the detail are resolved separately
 
 Visibility is a property of the individual recorded change, not of the entity as a whole. A single character may simultaneously carry public content and GM-only content.
 
-The rule is not all-or-nothing. **A viewer who may not see an entry's detail still sees that the entry exists and what it did.**
+For a given viewer, each entry resolves to one of three states:
 
-A GM curses a character, and the character's description now reads "your body is covered with feathers." The player sees that the description changed, when it changed, and what it now says -- their character's description is theirs to read. They do not see who asserted it, on what authority, or the GM-only note explaining the curse behind it. The effect is visible; the provenance and surrounding narrative detail are redacted.
+- **Fully visible** -- the viewer sees the entry, what it changed, its detail, and its provenance.
+- **Effect visible, detail redacted** -- the viewer sees that the entry exists, when, and what it changed, but not who asserted it, on what authority, or the narrative behind it. A GM curses a character and its description now reads "your body is covered with feathers": the player sees that the description changed and what it now says, but not the GM-only note explaining the curse.
+- **Hidden** -- the viewer sees nothing of it, in current state or in history. A GM records that a character is cursed and the curse is meant to stay secret: the player's projection shows no trace of it.
 
-This generalizes the pinning rule that derived values require. A fact type contributing to a value that must reconcile across viewers pins the visibility of its **effect**, so a player and a GM always compute the same total for a character's gold. The detail and provenance attached to that same entry remain independently redactable. One rule, with effect and detail resolved separately.
+An entry therefore carries two visibility levels: **effect visibility**, saying who may see that it exists and what it changed, and **detail visibility**, saying who may also see its detail and provenance. Detail visibility is never wider than effect visibility.
 
-The accepted consequence is that the shape of the history is not concealed: a player can tell something happened on a given date and that they are not being shown why. Concealing the entry's existence would make history a lie rather than a redaction, and would break recomputation of any value that entry contributes to.
+The fact type constrains both. A fact type contributing to a value that must reconcile across viewers pins its effect visibility to every viewer who can see the subject, so a player and a GM always compute the same total for a character's gold. Such an entry may have its detail redacted but cannot be hidden.
 
-See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
+A hidden entry is absent from that viewer's history as well as from current state. History stays truthful because it is a correct projection of what the viewer may see, not because it is complete for every viewer.
+
+See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md) and its 2026-11-17 amendment.
 
 ### The application directs; the KB records
 
@@ -102,7 +111,7 @@ The KB never computes availability. It records the location and status changes t
 
 ### Provenance is not optional
 
-Every projected value must be traceable to the recorded change that produced it, and through it to the author, the source, and any approval.
+Every projected value must be traceable to the recorded change that produced it, and through it to the author and the source.
 
 ## Entity and Fact Requirements
 
@@ -122,7 +131,7 @@ Every recorded change must carry enough information to answer, without consultin
 - the asserted content;
 - who asserted it;
 - when it was recorded;
-- what it is visible to, and separately what detail and provenance are visible to whom;
+- its effect visibility -- who may see that it exists and what it changed -- and its detail visibility -- who may also see its detail and provenance;
 - its veracity -- `CANON` or `RUMOR`;
 - what produced it -- direct GM action, player submission, expedition report, or application workflow;
 - which prior entries, if any, it supersedes.
@@ -136,17 +145,18 @@ Records are never modified after being written.
 - Projections skip superseded entries when computing current state. Retracting a correction restores the value the prior fact established.
 - Retraction never removes anything from the record.
 - Retraction must be authorized. A retraction is subject to the same authority rules as the assertion it supersedes.
-- History remains visible to all viewers, subject to content-level visibility resolution rather than structural suppression. Under the hybrid rule above, a viewer who may not see an entry's detail still sees the entry in history along with its effect; what is withheld is the detail and the provenance, not the fact that something happened.
+- History is visible to every viewer as a projection of the entries that viewer may see. An entry whose effect is visible appears in history with its effect, even when its detail and provenance are redacted. A hidden entry does not appear.
 
 ## Visibility and Redaction Requirements
 
 - Initial visibility levels are `PUBLIC`, `CAMPAIGN`, and `GM_ONLY`, matching the application's levels.
-- Viewer roles are the tiers defined in [ADR 004](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. An Administrator therefore sees everything a GM sees.
+- Viewer roles are the tiers defined in [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. An Administrator therefore sees everything a GM sees.
 - Viewer role is a parameter of every read. There is no unfiltered read that the application then filters.
-- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+- Redaction is the KB's mechanism for world knowledge. It is not the application's mechanism for its own current-state records; the application authorizes queries against those by role tier. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md).
 - Redaction is resolved inside the KB. Content the viewer may not see never crosses the boundary. Client-side filtering is a data leak and is out of scope by design.
 - A projection for a given viewer is computed from the subset of the record that viewer may see. Two viewers with different roles may legitimately see different current states for the same entity.
-- Fact types that back a value required to reconcile across viewers pin their visibility, as described in Core Principles.
+- Each entry carries an effect visibility and a detail visibility, as described in Core Principles. Detail visibility is never wider than effect visibility.
+- Fact types that back a value required to reconcile across viewers pin their effect visibility and cannot carry hidden entries.
 
 ## Projection Requirements
 
@@ -155,7 +165,7 @@ Records are never modified after being written.
 - Projections are rebuildable from the record in full. No projection may hold state that cannot be recomputed.
 - When an entry is superseded, every projection and derived value affected by it must recompute from the corrected sequence rather than being patched in place.
 - Projections expose the provenance and veracity of each value they present.
-- A projection distinguishes three states for a value: fully visible, visible with redacted provenance, and not visible. The middle state is an explicit shape, not an omission.
+- A projection distinguishes three states for an entry: fully visible, effect visible with detail and provenance redacted, and hidden. The middle state is an explicit shape, not an omission. A hidden entry is omitted entirely.
 - Projection storage and caching are internal concerns and must not appear in the contract.
 
 ## Authority Requirements
@@ -165,7 +175,7 @@ Records are never modified after being written.
 - A player may assert facts directly about entities they own -- their own characters.
 - A player may record claims about the world directly; those enter the record as `RUMOR`.
 - The KB checks domain authority, not identity. It accepts the application's statement of who the caller is and what tier they hold, and decides whether that caller may assert this fact type about this subject.
-- Canonical world state changes require authorized acceptance. The moderation workflow itself is owned by the application layer; the KB records the outcome and its approval trail.
+- Canonical world state is established only by a GM asserting `CANON` -- directly, or by promoting a rumor. Curation (promoting, contradicting, retracting) is an application workflow; the KB records each resulting assertion with its author. No GM approval is required for a player's assertions within their own scope.
 - The LLM is never an authorized author, but it does not require a separate approval step. An LLM extraction from a human submission is recorded as `RUMOR` under the submitting human's authorship, with the LLM's involvement noted. The LLM cannot originate a fact with no human submission behind it, and cannot assert `CANON`.
 
 ## Interaction With the Application Layer
@@ -190,12 +200,12 @@ In scope:
 - Three kinds of recorded entry: entity creation, fact assertion, and retraction.
 - Two fact types: the character's name, and a free-text note about the character.
 - The name pins the visibility of its effect: every viewer sees the same current name. Its provenance may still be redacted.
-- The note permits per-event visibility across all three levels.
+- The note permits per-event visibility across all three levels, including hidden: a GM-only note leaves no trace in a player projection.
 - All facts in this increment are `CANON`; the rumor path is exercised in a later increment.
 - A current-state character projection resolved for a viewer role.
 - Provenance exposed on every projected value.
 
-Out of scope for this increment: locations, numeric or derived values, relationships between entities, the moderation workflow, and any application integration.
+Out of scope for this increment: locations, numeric or derived values, relationships between entities, the curation workflow, and any application integration.
 
 End-state demonstration:
 
@@ -213,13 +223,18 @@ End-state demonstration:
 2. **Retraction of a fact that others depend on.** When a superseded fact was the basis for later facts, does retraction cascade, invalidate, or merely recompute?
 3. **Is `ProposedChange` still a KB entity** now that player world-claims enter the log as rumors, or does the GM review queue become an application-side view? See [`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) Open Item 1.
 4. **Veracity beyond two values.** `RUMOR` and `CANON` may prove too coarse -- a GM-corroborated player report is neither.
-5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 003](../adr/003-kb-app-ownership-boundary.md) Open Question 1.
+5. **Cross-boundary failure semantics.** An application write plus a KB assertion spans two stores with no shared transaction. See [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) Open Question 1.
+6. **Hidden entries with observable effects.** A hidden entry may change something the viewer can otherwise observe -- a secret curse that lowers a stat the player reads. Either that fact type pins its effect, and the curse cannot be hidden, or the player sees a value they cannot reconcile with the history they are shown. Which fact types may carry hidden entries, and what the viewer sees of a value a hidden entry contributes to, needs a rule before the first such fact type is registered.
+7. **Visible entries that reference hidden entities.** A GM-only NPC gives gold to a player's character. The gold entry cannot be hidden, but the NPC can, leaving the player's provenance pointing at an entity they may not see. Either the write is rejected, or the reference projects as a redacted stub ("an unknown benefactor"). Decide before the first fact type that references another entity is registered.
+8. **Fold order: record time or world time.** An expedition report filed today may describe events of three weeks ago. Folding gold in the order entries were recorded and folding it in the order the events happened in the world can give different intermediate balances. Each fact type needs to say which order it folds in, and the record needs a world-time field if any fact type folds by it.
+9. **Who sees a draft.** A draft is not world knowledge, but the visibility levels are tier-based (`PUBLIC`, `CAMPAIGN`, `GM_ONLY`). Owner-only visibility -- the player and GMs see a draft, other players do not -- is not expressible in the current model.
 
 ## Resolved Questions
 
-Settled 2026-09-15; recorded so they are not re-opened.
+Settled 2026-09-15 unless dated otherwise; recorded so they are not re-opened.
 
-- **Visible effect, hidden cause** -- resolved by the hybrid visibility rule above. The effect is visible; the detail and provenance may be withheld.
+- **Visible effect, hidden cause** -- resolved by the visibility rule above. The effect is visible; the detail and provenance may be withheld.
+- **Hidden entries** -- settled 2026-11-17. An entry may be hidden from a viewer entirely, effect included, unless its fact type pins its effect. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md) Amendments.
 - **Who registers fact types, and when** -- the registry is a deployment artifact for the initial release. Runtime definition is deferred, not rejected.
 - **Availability in the KB** -- the application computes availability and pushes the resulting location and status changes to the KB. The KB records them and never computes availability itself. This does not conflict with [ADR 003 (app)](../app-be/adr/003-downtime-commitments-and-availability.md): availability remains derived, and the KB holds a record of what was asserted rather than a second authority for computing it.
 - **Pending facts** -- player world-claims enter the record immediately as `RUMOR` rather than waiting outside it.

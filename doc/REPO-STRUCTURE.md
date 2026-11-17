@@ -18,7 +18,7 @@ Two developers, one API boundary, no external consumers yet.
 
 ### Current state of the layout
 
-The tree above is the target. What exists today: `packages/app-be` only, with the KB/app seam expressed as a client-side interface at `packages/app-be/src/kb/knowledge-base-gateway.ts` rather than a shared `packages/contract`. `doc/ARCHITECTURE.md` and `doc/kb/ARCHITECTURE.md` / `doc/kb/SPECS.md` are not written. `doc/app-fe/` has no documents yet; the application-layer documents under `doc/app-be/` currently carry product-level requirements that span both application packages.
+The tree under Layout below is the target. What exists today: `packages/app-be` only, with the KB/app seam expressed as a client-side interface at `packages/app-be/src/kb/knowledge-base-gateway.ts` rather than a shared `packages/contract`. `doc/ARCHITECTURE.md` and `doc/kb/ARCHITECTURE.md` / `doc/kb/SPECS.md` are not written. `doc/app-fe/` has no documents yet; the application-layer documents under `doc/app-be/` currently carry product-level requirements that span both application packages.
 
 ### The cost
 
@@ -32,11 +32,12 @@ Revisit if it happens twice.
 
 ```
 packages/
-  contract/        Shared API types + fixtures. The seam. Jointly owned.
-                   - openapi.yaml       OpenAPI schema for the KB/app-be interface
+  contract/        Shared KB/app-be boundary types + fixtures. The seam. Jointly owned.
                    - src/index.ts       TypeScript type definitions
   kb/              Knowledge base layer. Facts, events, provenance, redaction.
   app-be/          Application backend. API routes, use cases, scheduling logic.
+                   - openapi.yaml       OpenAPI description of the HTTP API app-be exposes to its
+                                        clients (not yet written; see doc/contract/API.md)
   app-fe/          Application frontend. UI, client-side routing, expedition views.
 
 doc/
@@ -47,9 +48,11 @@ doc/
   ARCHITECTURE.md        System level: the three layers, boundaries, deployment. NOT YET WRITTEN.
   adr/                   System + contract decisions.
   contract/
-    API.md               Normative prose for the KB/app-be boundary. Points at packages/contract.
+    API.md               HTTP API conventions app-be exposes to its clients.
+    KB-PROJECTIONS.md    KB/app boundary: entity ownership and KB projection shapes. Points at packages/contract.
   kb/
     REQUIREMENTS.md
+    PRIOR-ART.md         Comparison axes and evaluations of existing products and projects.
     ARCHITECTURE.md
     SPECS.md             KB internals: event log format, storage schema.
     adr/                 KB-scoped decisions.
@@ -80,8 +83,9 @@ types rather than prose. The compiler enforces agreement; discipline does not ha
 
 **The contract does not live in either app's `SPECS.md`.** `doc/kb/SPECS.md` covers KB internals and
 `doc/app-be/SPECS.md` covers app internals. Putting the wire contract in either one means copying it
-into the other, and the copies diverge. `doc/contract/API.md` holds the normative prose and
-references the types; it never restates them.
+into the other, and the copies diverge. `doc/contract/KB-PROJECTIONS.md` holds the normative prose
+for the KB/app boundary and references the types; it never restates them. `doc/contract/API.md` does
+the same for the HTTP API `app-be` exposes to its clients.
 
 `packages/contract` also holds shared fixtures -- seeded request/response sets covering the cases
 that matter (a GM view and a player view of the same facts, a retraction, a recalculated derived
@@ -92,7 +96,7 @@ independently without blocking on each other.
 KB side. The app never receives KB world knowledge it must hide.
 
 This is specifically about KB-owned world state. The application owns eight coordination and
-configuration entities of its own (see [ADR 003](adr/003-kb-app-ownership-boundary.md)) and is
+configuration entities of its own (see [ADR 002](adr/002-application-owned-identity-and-scheduling-state.md)) and is
 responsible for authorizing queries against those itself, filtering by the caller's role tier. That
 is access control, not redaction, and it does not involve the KB. A client-side filter is a data
 leak in either case.
@@ -109,7 +113,12 @@ Three scopes, one file per decision, append-only by new file so concurrent ADRs 
 | `doc/kb/adr/` | Decisions internal to the KB layer |
 | `doc/app-be/adr/` | Decisions internal to the application layer |
 
-Naming: `NNN-short-title.md`, numbered per directory.
+Naming: `NNN-short-title.md`, numbered per directory. The heading inside the file carries the same
+number as its filename.
+
+Because numbers repeat across scopes, a reference to an ADR in another scope names that scope: from
+system, KB, or contract documents an application ADR is "ADR 004 (app)"; from application documents a
+system ADR is "ADR 004 (system)". A reference within the same scope needs no qualifier.
 
 A decision belongs in `doc/adr/` if reversing it would require changes on both sides of the
 boundary.
@@ -148,7 +157,8 @@ assuming one application per repo. Three resolutions apply here:
 
 **1. Per-layer documents resolve by the task's area.** A task labelled `area:kb` reads `doc/kb/*`; a
 task labelled `area:app` reads `doc/app-be/*`, or `doc/app-fe/*` for front-end work.
-A task labelled `area:contract` reads `doc/contract/API.md` and both app layers' `SPECS.md`. When
+A task labelled `area:contract` reads `doc/contract/API.md`, `doc/contract/KB-PROJECTIONS.md`, and
+both layers' `SPECS.md`. When
 area is ambiguous, ask rather than guess.
 
 **2. The phase plan is retired; GitHub milestones are authoritative.** autocode's planning workflow

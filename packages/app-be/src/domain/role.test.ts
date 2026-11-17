@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { hasAtLeast, type Role } from "./role.js";
+import type { ViewerRole } from "../index.js";
+import { hasAtLeast } from "./role.js";
 
-const ROLES_IN_ASCENDING_ORDER: Role[] = [
+const ROLES_IN_ASCENDING_ORDER: ViewerRole[] = [
   "ANONYMOUS",
   "PLAYER",
   "GM",

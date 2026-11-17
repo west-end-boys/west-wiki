@@ -1,7 +1,7 @@
 # API Contract
 
 Status: Draft  
-Last updated: September 15, 2026
+Last updated: November 17, 2026
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The KB event log is the source of truth for campaign **world** state. The applic
 
 The application also owns coordination and configuration records of its own, held as ordinary current-state rows rather than projected from the KB. Which entity belongs to which layer is tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md), which is the single source of truth for the split.
 
-See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
+See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
 
 ## Contract Philosophy
 
@@ -53,7 +53,7 @@ The application API does not expose arbitrary persistence mutation.
 
 The application backend does not own mutable canonical records for the entities the KB owns. Those are read as projections and changed only by recording facts.
 
-The application *does* own its own coordination and configuration records. These are conventional mutable rows. They have no history requirement, no provenance requirement, and no redaction requirement, and paying the event-sourcing cost for them would buy nothing. Which entity belongs to which layer is tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md); [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does.
+The application *does* own its own coordination and configuration records. These are conventional mutable rows. They have no history requirement, no provenance requirement, and no redaction requirement, and paying the event-sourcing cost for them would buy nothing. Which entity belongs to which layer is tabulated in [`KB-PROJECTIONS.md`](KB-PROJECTIONS.md); [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) records why the split falls where it does.
 
 Reads of app-owned records are ordinary authorized queries. The remainder of this section describes reads and writes that cross the KB boundary.
 
@@ -134,11 +134,11 @@ Raw KB event shapes do not leak through the public application API unless a dedi
 
 These are two mechanisms and the difference matters.
 
-**Redaction** is the KB resolving a viewer-specific projection out of a fact history. Viewer context is part of every relevant KB read, and GM-only world knowledge is filtered by the KB before it reaches `app-be` or the frontend. Under the hybrid visibility rule ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)) a redacted entry still projects its effect: the viewer learns that something changed and what the resulting value is, without the cause or the provenance.
+**Redaction** is the KB resolving a viewer-specific projection out of a fact history. Viewer context is part of every relevant KB read, and GM-only world knowledge is filtered by the KB before it reaches `app-be` or the frontend. Under [ADR 004](../adr/004-fact-model-veracity-and-visibility.md) an entry is fully visible to a viewer, visible in effect with its detail and provenance redacted, or hidden from that viewer entirely; which applies is decided per entry within the limits its fact type sets.
 
 **Access control** is `app-be` filtering its own current-state rows by the caller's role tier -- not returning a `GM_ONLY` adventure opportunity to a player. That is an ordinary authorization check on a query, and it is the application's responsibility for the eight entities it owns.
 
-Viewer roles are the tiers defined in [ADR 004](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`. A protected read or command declares the minimum tier it requires.
+Viewer roles are the tiers defined in [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`. A protected read or command declares the minimum tier it requires.
 
 Client-side filtering is never a security boundary in either layer.
 
@@ -199,8 +199,46 @@ The executable app contract should define at least:
 - character create/edit command requests;
 - activation command request/result;
 - retirement command request/result;
+- downtime schedule and cancel command request/result;
+- login and account-creation request/result;
 - availability result and reason codes;
 - standard API/domain error shape.
+
+## Downtime Commands
+
+Downtime semantics are defined in [ADR 003 (app)](../app-be/adr/003-downtime-commitments-and-availability.md) and [`doc/app-be/SPECS.md`](../app-be/SPECS.md). Commitments are application-owned records; these commands write no KB events.
+
+```text
+POST /characters/{characterId}/downtime
+POST /characters/{characterId}/commitments/{commitmentId}/cancel
+```
+
+`POST /characters/{characterId}/downtime` schedules a downtime activity for an owned `ACTIVE` character. The body is a `ScheduleDowntimeRequest`: `type` (a downtime type -- never `EXPEDITION`), `startDate` and `endDate` as `LocalDate`, and optional `description` and `activityData`. `TRAVEL` requires `activityData.destinationLocationId` naming a known location. The commitment is created `SCHEDULED` and reserves its dates immediately. Returns `201` with the `CharacterCommitment`.
+
+`POST /characters/{characterId}/commitments/{commitmentId}/cancel` cancels a `SCHEDULED` downtime commitment belonging to an owned character. Returns `200` with the commitment, now `CANCELLED`. Expedition commitments cannot be cancelled through this command.
+
+Expected rejections:
+
+- `FORBIDDEN` (403) -- the caller does not own the character;
+- `NOT_FOUND` (404) -- unknown character, or a commitment that does not belong to it;
+- `INVALID_REQUEST` (400) -- not a downtime type, malformed or inverted dates, or travel with no destination;
+- `CHARACTER_NOT_ELIGIBLE` (422) -- the character is not `ACTIVE`;
+- `INVALID_LOCATION` (422) -- the travel destination is unknown;
+- `COMMITMENT_CONFLICT` (409) -- the dates overlap an existing blocking commitment, named in `details.commitmentId`;
+- `DOMAIN_VALIDATION_FAILED` (422) -- cancelling a commitment that is not `SCHEDULED`, or an expedition commitment.
+
+## Authentication and Accounts
+
+```text
+POST /auth/login
+POST /accounts
+```
+
+`POST /auth/login` takes a `LoginRequest` (`email`, `password`) and returns `200` with a `LoginResult` (`sessionId`, `userId`). Bad credentials are `INVALID_CREDENTIALS` (401).
+
+Every other route currently requires `Authorization: Bearer <sessionId>` and an active campaign membership. A missing or unknown session is `UNAUTHENTICATED` (401); a non-member or suspended member is `FORBIDDEN` (403). Reads for viewers with no membership -- the `ANONYMOUS` tier -- are agreed (see [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md) Amendments) but no route serving them is specified yet.
+
+`POST /accounts` creates a user and their campaign membership. It is Administrator-only and is the interim account-creation path of [ADR 005 (app)](../app-be/adr/005-email-and-password-authentication.md). The body is a `CreateAccountRequest` (`email`, `password`, `role`); returns `201` with a `CreateAccountResult` (`user`, `membership`).
 
 ## Time
 

@@ -118,6 +118,19 @@ above.
 not a set of independent switches — Administrator implies GM implies Player implies the Anonymous
 public-read baseline.
 
+## Amendments
+
+**2026-11-17. `ANONYMOUS` is a viewer role.** Agreed by @deastland0423 and @benjaminbradley.
+`ANONYMOUS` is still never a stored `CampaignMembership.role`, but it is now a value of
+`ViewerRole` in `packages/app-be/src/kb/knowledge-base-gateway.ts`, so a KB read can be resolved for
+a viewer who is not a member of the campaign. The consequence above that `ViewerContext.viewerRole`
+"needs no code change" no longer holds.
+
+`ViewerContext` is now a union of an anonymous context (no `userId`) and a member context.
+`ActorContext`, used for writes, is the member context only: an anonymous viewer cannot assert
+anything. No route serves anonymous reads yet; the auth middleware still rejects requests without
+a member session.
+
 ## References
 
 - `doc/app-be/REQUIREMENTS.md` — Actors section (Anonymous Visitor, Player, GM, Administrator),
@@ -126,4 +139,4 @@ public-read baseline.
 - `doc/app-be/SPECS.md` — `CampaignMembership` (attributes to be updated to match this decision)
 - `doc/app-be/adr/002-character-lifecycle-and-retirement.md` — precedent for a single-field lifecycle
   status rather than independent flags
-- `packages/app-be/src/kb/knowledge-base-gateway.ts` — existing `ViewerContext.viewerRole`
+- `packages/app-be/src/kb/knowledge-base-gateway.ts` — `ViewerRole`, `ViewerContext`, `ActorContext`

@@ -10,6 +10,7 @@ import type {
 } from "../index.js";
 import type {
   ActivateCharacterEventInput,
+  ActorContext,
   CreateCharacterEventInput,
   KnowledgeBaseGateway,
   RetireCharacterEventInput,
@@ -86,7 +87,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
 
   async recordCharacterActivated(
     input: ActivateCharacterEventInput,
-    _context: ViewerContext,
+    _context: ActorContext,
   ): Promise<CharacterCommandResult> {
     const character = this.characters.get(input.characterId);
     if (!character) {
@@ -121,7 +122,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
 
   async recordCharacterCreated(
     input: CreateCharacterEventInput,
-    _context: ViewerContext,
+    _context: ActorContext,
   ): Promise<CharacterCommandResult> {
     this.creationWrites.push(structuredClone(input));
 
@@ -148,7 +149,7 @@ export class InMemoryKnowledgeBaseGateway implements KnowledgeBaseGateway {
 
   async recordCharacterRetired(
     input: RetireCharacterEventInput,
-    _context: ViewerContext,
+    _context: ActorContext,
   ): Promise<CharacterCommandResult> {
     const character = this.characters.get(input.characterId);
     if (!character) {

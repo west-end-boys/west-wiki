@@ -1,17 +1,20 @@
 # Application Architecture
 
 Status: Draft  
-Last updated: September 15, 2026
+Last updated: November 17, 2026
 
 ## Scope
 
-This document describes the West Wiki application layer. The application owns UI, use cases, domain validation, scheduling, expeditions, authentication/permissions orchestration, and LLM-assisted interaction. It consumes and changes campaign state only through the KB boundary.
+This document describes the West Wiki application layer. The application owns UI, use cases, domain validation, scheduling, expeditions, authentication/permissions orchestration, and LLM-assisted interaction.
 
-The KB event log is the authoritative source of truth for campaign **world** state -- characters, regions, locations, world knowledge, and the history of how any of it changed. The application maintains no second authoritative store for those.
+Ownership is split by kind of data:
 
-The application *does* own its own coordination and configuration records, held as ordinary current-state rows. Ownership is tabulated in [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); see also the Data Ownership section below.
+- **The application owns users and scheduling** -- identity, campaign membership and roles, campaign configuration, commitments, GM availability, adventure opportunities, calls to adventure, and expedition participation. These are ordinary current-state rows in the application's own database.
+- **The KB owns world state** -- characters, regions, locations, world knowledge, and the history of how any of it changed. The application reads it as viewer-resolved projections and changes it only by asserting facts across the KB boundary. It keeps no second authoritative copy.
 
-See [ADR 001](../adr/001-event-sourced-fact-store.md), [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md), [ADR 003](../adr/003-kb-app-ownership-boundary.md), and [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
+The entity-by-entity split is tabulated in [`KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md); see also the Data Ownership section below.
+
+See [ADR 001 (system)](../adr/001-event-sourced-fact-store.md), [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md), and [ADR 004 (system)](../adr/004-fact-model-veracity-and-visibility.md).
 
 System-wide boundaries and deployment concerns belong in `doc/ARCHITECTURE.md`; KB internals belong in `doc/kb/ARCHITECTURE.md`.
 
@@ -26,12 +29,12 @@ The application layer is responsible for:
 - GM availability and regional authorization workflows;
 - adventure-opportunity browsing and scheduling;
 - Calls to Adventure and expedition participation workflows;
-- post-session report intake and moderation workflows;
+- post-session report intake and curation workflows;
 - natural-language intent interpretation and domain-action orchestration;
 - conventional UI for important operations;
 - constructing structured KB event proposals/writes after successful domain validation.
 
-The application layer is not the authoritative store for campaign state, facts, provenance, history, or redaction.
+The application layer is not the authoritative store for world state, facts, provenance, history, or redaction. It is the authoritative store for its own user and scheduling records.
 
 ## High-Level Components
 
@@ -47,7 +50,7 @@ app-be HTTP API
    +-- Scheduling / Expedition Service
    +-- GM Availability Service
    +-- LLM Orchestration Service
-   +-- Report / Moderation Workflow
+   +-- Report / Curation Workflow
    |
    v
 KB Contract
@@ -65,7 +68,7 @@ The KB may internally use materialized projections or caches for performance. Th
 
 ## Read Model
 
-The application reads current state through viewer-safe KB projections.
+The application reads world state through viewer-safe KB projections, and its own user and scheduling records directly from its database, filtered by the caller's role tier.
 
 Typical flow:
 
@@ -78,13 +81,13 @@ HTTP GET
   -> app-be maps projection to response DTO
 ```
 
-Examples of projected read models include Campaign, Character, Location, Opportunity, Expedition, and availability-related state.
+Projected read models include Character and Location. Campaign, adventure opportunities, calls to adventure, commitments, and GM availability are application-owned and are read from the application's own store; availability is derived by the application from its commitments plus the projected character state.
 
 The application should not reconstruct domain state by reading raw KB events unless a dedicated history/provenance use case explicitly requires event-level data.
 
 ## Write Model
 
-Application writes are domain commands, not row mutations.
+Application writes are domain commands. Commands that change world state produce KB assertions; commands that change user or scheduling records update application rows.
 
 Typical flow:
 
@@ -141,7 +144,7 @@ Responsibilities include:
 - automatic calendar-driven transition semantics;
 - date-specific availability calculations.
 
-If commitment transitions are represented as new events, the service coordinates the domain decision while the KB remains authoritative for the resulting history/state.
+Commitments are application-owned current-state records; their transitions update application rows and are not KB events. Where a transition changes world state -- a character arriving at a travel destination -- the application asserts that change to the KB.
 
 ### Scheduling and Expedition Service
 
@@ -170,13 +173,15 @@ Natural-language input
 
 The LLM never receives unrestricted KB write access.
 
-### Report and Moderation Workflow
+### Report and Curation Workflow
 
-Retains/submits reports according to the KB contract, requests structured proposed facts/events from the LLM, validates them, presents them for GM review, and submits accepted proposals to the KB.
+Submits the original report to the KB unchanged, as an `ExpeditionReport`. Requests structured claims from the LLM, validates permissions, entity references, and domain constraints, and asserts valid claims to the KB as `RUMOR` under the submitting human's authorship, with the LLM's involvement noted. There is no approval gate.
+
+Curation is continuous: a GM promotes a rumor to canon by asserting it, contradicts it, or retracts it. The workflow gives GMs a view of unverified claims to curate. See [ADR 004 (system)](../adr/004-fact-model-veracity-and-visibility.md) and [`SPECS.md`](SPECS.md) Report Processing Workflow.
 
 ## Data Ownership
 
-[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth for which layer owns which entity. This section describes what that ownership means for this layer; it does not restate the table. [ADR 002](../adr/002-application-owned-identity-and-scheduling-state.md) and [ADR 003](../adr/003-kb-app-ownership-boundary.md) record why the split falls where it does.
+[`doc/contract/KB-PROJECTIONS.md`](../contract/KB-PROJECTIONS.md) is the single source of truth for which layer owns which entity. This section describes what that ownership means for this layer; it does not restate the table. [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md) records why the split falls where it does.
 
 **The mental model:** the KB owns the state of the world and the entities within it. The application is an interface onto that state and the coordination layer for the adventures that generate expedition reports, which are the change records feeding the KB.
 
@@ -226,7 +231,7 @@ Client-side filtering is not a security boundary in either case.
 
 Application records reference KB entity identifiers, and KB entities may reference application identifiers -- `Character.ownerUserId`, an expedition report's links to its expedition and participants.
 
-The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+The application guarantees that identifiers it issues are persistent and stable: once issued, never reused and never changed. The KB stores identifiers, not foreign keys. Neither store enforces referential integrity against the other, and a cross-boundary operation spans two stores with no shared transaction; failure semantics are an open question in [ADR 002 (system)](../adr/002-application-owned-identity-and-scheduling-state.md).
 
 ## Character State Authority
 
@@ -246,9 +251,9 @@ Because one campaign day equals one real-world day, the system needs reliable pr
 
 **Day boundaries are measured in the campaign's configured timezone** (`Campaign.timezone`), not the server's and not the caller's. That timezone decides when a scheduled commitment becomes active, when an active one completes, and which day an availability query concerns.
 
-The exact mechanism may involve app-be jobs, KB projection-time logic, event generation, request-time reconciliation, or a combination. Whatever implementation is chosen, externally observed projections must be correct for the campaign date and historical changes must remain event-backed.
+Commitments are application-owned, so these transitions are application state changes. The mechanism may involve app-be jobs, request-time reconciliation, or both. Whatever is chosen, externally observed state must be correct for the campaign date. Where a transition changes world state -- arrival at a travel destination -- the resulting KB assertion must be made, and the KB records it as an event like any other.
 
-A dedicated ADR should decide which component is responsible for emitting automatic time-based events.
+A dedicated ADR should decide which component drives automatic time-based transitions and the KB assertions they trigger.
 
 ## Security
 

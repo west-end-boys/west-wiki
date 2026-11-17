@@ -7,7 +7,7 @@ import type {
 } from "../index.js";
 import { DomainError } from "../domain/domain-error.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
-import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import type { ActorContext } from "../kb/knowledge-base-gateway.js";
 import { InMemoryCharacterCommitmentStore } from "../store/in-memory-character-commitment-store.js";
 import { CommitmentService } from "./commitment-service.js";
 import { DowntimeService } from "./downtime-service.js";
@@ -33,7 +33,7 @@ const wardenwood: LocationSummary = {
   allowsCharacterActivation: false,
 };
 
-const context: ViewerContext = {
+const context: ActorContext = {
   userId: "player-1",
   viewerRole: "PLAYER",
 };
