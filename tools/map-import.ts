@@ -44,9 +44,10 @@
  *   - every referenced hex exists (catches typos, and refs landing on the
  *     staggered top/bottom edges where no hex exists)
  *   - no hex is assigned twice, including under two different values
- *   - terrain names are checked against those already used in the map;
- *     region ids are checked against regions[] and an undeclared id is a
- *     hard error, since it would break referential integrity
+ *   - terrain names are checked against data/maps/terrain-types.json and an
+ *     undeclared name is a hard error; region ids are checked against
+ *     regions[], likewise a hard error, since it would break referential
+ *     integrity
  *   - refs that already hold the requested value are reported as no-ops
  *   - regions mode reports rows in a named column that still have no region
  *     after the change, so a gap in the middle of a column cannot pass
@@ -85,6 +86,13 @@ interface Change {
 
 const DEFAULT_MAP_PATH = "data/maps/western-reaches-surface.json";
 
+/**
+ * The terrain vocabulary, shared by every map, so this is not overridable with
+ * --map. Declaring a type here is what makes it assignable; see the file's own
+ * header and data/maps/README.md.
+ */
+const TERRAIN_REGISTRY_PATH = "data/maps/terrain-types.json";
+
 /** Placeholder regionId/terrain for a hex not yet transcribed. */
 const UNASSIGNED = "UNKNOWN";
 
@@ -117,6 +125,17 @@ function neighbours(col: number, row: number): [number, number][] {
 
 function loadMap(): MapDoc {
   return JSON.parse(readFileSync(mapPath, "utf8")) as MapDoc;
+}
+
+/**
+ * The declared terrain ids, in declaration order so a refusal lists them the
+ * way the registry and the README do.
+ */
+function loadTerrainIds(): string[] {
+  const doc = JSON.parse(readFileSync(TERRAIN_REGISTRY_PATH, "utf8")) as {
+    terrainTypes: { id: string }[];
+  };
+  return doc.terrainTypes.map((t) => t.id);
 }
 
 function dumpRegions(colSpec: string | undefined): void {
@@ -199,7 +218,8 @@ function main(): void {
   const doc = loadMap();
   const byKey = new Map<string, Hex>();
   for (const hex of doc.hexes) byKey.set(`${hex.x / 100},${hex.y}`, hex);
-  const knownTerrain = new Set(doc.hexes.map((h) => h.terrain));
+  const terrainIds = loadTerrainIds();
+  const declaredTerrain = new Set(terrainIds);
   const declaredRegions = new Set(doc.regions.map((r) => r.id));
   const rowsByCol = new Map<number, Set<number>>();
   for (const hex of doc.hexes) {
@@ -272,11 +292,16 @@ function main(): void {
     if (!body || body === "<none>") continue;
 
     if (mode === "terrain") {
-      if (!knownTerrain.has(key)) {
-        warnings.push(
-          `line ${lineNo}: "${key}" is not a terrain already used in the map ` +
-            `(known: ${[...knownTerrain].sort().join(", ")})`,
+      if (!declaredTerrain.has(key)) {
+        // A hard error, not a warning. Deriving the vocabulary from values
+        // already present in the map made a typo and a genuinely new type
+        // indistinguishable, and both got written.
+        errors.push(
+          `line ${lineNo}: "${key}" is not a declared terrain. ` +
+            `Declare it in ${TERRAIN_REGISTRY_PATH} first, or use one of: ` +
+            `${terrainIds.join(", ")}`,
         );
+        continue;
       }
       for (const token of body.split(",").map((t) => t.trim()).filter(Boolean)) {
         const parsed = parseRef(token);
