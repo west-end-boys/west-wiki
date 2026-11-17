@@ -31,6 +31,38 @@
     {
       "id": "lowland",
       "name": "Lowland Moor"
+    },
+    {
+      "id": "rimespire",
+      "name": "Rimespire Mountains"
+    },
+    {
+      "id": "sablewood",
+      "name": "Sablewood"
+    },
+    {
+      "id": "myre",
+      "name": "Myre Swamp"
+    },
+    {
+      "id": "dhalpurna",
+      "name": "Dhalpurna Mountains"
+    },
+    {
+      "id": "kyzian",
+      "name": "Kyzian Steppes"
+    },
+    {
+      "id": "djurum",
+      "name": "Djurum Desert"
+    },
+    {
+      "id": "gilzai",
+      "name": "Gilzai Mountains"
+    },
+    {
+      "id": "silent",
+      "name": "Silent Mountains"
     }
   ],
   "hexes": [
