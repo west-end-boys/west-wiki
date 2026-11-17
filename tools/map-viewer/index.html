@@ -209,7 +209,7 @@ import { makeTerrain, terrainProblems } from "./terrain.js";
 // Locations are one array discriminated by `kind` (ADR 005). locations.js holds
 // the vocabulary, the mark per kind, and the check - so a second array cannot
 // appear and quietly take half the places out of this page again.
-import { describe as describeLocation, locationProblems, markOf } from "./locations.js";
+import { describe as describeLocation, locationProblems, markOf, rankOf } from "./locations.js";
 
 // ---------------------------------------------------------------------------
 // Palettes
@@ -504,17 +504,23 @@ function draw() {
       locationMark(ctx, markOf(l.kind), cx, cy, rr);
       ctx.fillStyle = "#fff"; ctx.fill();
       ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111";
-      // A hidden place is GM-only, so it must not transcribe as a public one.
-      // Dashes carry that, not colour - the mark is already doing the kind.
-      if (l.hidden) ctx.setLineDash([Math.max(2, rr / 1.6), Math.max(2, rr / 1.6)]);
+      // The outline says restricted or not, and nothing finer. Dash length was
+      // tried as an ordinal ramp over the four tiers and rejected on looking at
+      // it: at working zoom a mark is ~6px across, and three dash densities over
+      // that span are not rankable by eye. Which tier is carried by the label
+      // instead, where it is unambiguous.
+      if (rankOf(l.visibleTo) > 0) ctx.setLineDash([Math.max(2, rr / 1.5), Math.max(2, rr / 1.5)]);
       ctx.stroke(); ctx.setLineDash([]);
       if (s >= 7) {
+        // Public is the common case and goes unsaid; anything narrower is named
+        // outright, because that is the fact worth checking against the poster.
+        const label = rankOf(l.visibleTo) > 0 ? `${l.name} · ${l.visibleTo}` : l.name;
         ctx.font = `600 ${Math.max(10, s * 0.95)}px ui-sans-serif, system-ui, sans-serif`;
         ctx.textAlign = "center"; ctx.textBaseline = "bottom";
         ctx.lineWidth = 3; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface");
-        ctx.strokeText(l.name, cx, cy - rr - 2);
+        ctx.strokeText(label, cx, cy - rr - 2);
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink");
-        ctx.fillText(l.name, cx, cy - rr - 2);
+        ctx.fillText(label, cx, cy - rr - 2);
       }
     }
   }
