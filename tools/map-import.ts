@@ -3,10 +3,13 @@
  * list.
  *
  * Usage:
- *   npx tsx tools/map-import.ts <corrections-file> [--apply]
- *   npx tsx tools/map-import.ts --dump-regions [cols]
+ *   npx tsx tools/map-import.ts <corrections-file> [--apply] [--map <path>]
+ *   npx tsx tools/map-import.ts --dump-regions [cols] [--map <path>]
  *
  * Without --apply it reports what would change and exits (dry run).
+ * --map overrides the surface map; it defaults to DEFAULT_MAP_PATH below.
+ * tools/map-viewer drives this script over HTTP so that clicking a correction
+ * in the browser runs exactly these validations.
  * --dump-regions prints the map's current region assignment in the run
  * notation below, for verification or to use as a starting template.
  *
@@ -78,7 +81,10 @@ interface Change {
   to: string;
 }
 
-const MAP_PATH = "data/maps/western-reaches-surface.json";
+const DEFAULT_MAP_PATH = "data/maps/western-reaches-surface.json";
+
+/** Overridden by --map, so the surface map is not the only one importable. */
+let mapPath = DEFAULT_MAP_PATH;
 
 /** Even columns sit half a hex higher - they lack y=0 and keep y=74. */
 function neighbours(col: number, row: number): [number, number][] {
@@ -102,7 +108,7 @@ function neighbours(col: number, row: number): [number, number][] {
 }
 
 function loadMap(): MapDoc {
-  return JSON.parse(readFileSync(MAP_PATH, "utf8")) as MapDoc;
+  return JSON.parse(readFileSync(mapPath, "utf8")) as MapDoc;
 }
 
 function dumpRegions(colSpec: string | undefined): void {
@@ -146,7 +152,27 @@ function parseRef(ref: string): { col: number; row: number } | null {
 }
 
 function main(): void {
-  const args = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+
+  // Pull --map <path> out first so it may appear anywhere, leaving the
+  // positional corrections file as args[0] regardless of flag order.
+  const args: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === undefined) continue;
+    if (arg === "--map") {
+      const next = argv[i + 1];
+      if (next === undefined) {
+        console.error("--map requires a path");
+        process.exit(2);
+      }
+      mapPath = next;
+      i++;
+      continue;
+    }
+    args.push(arg);
+  }
+
   if (args[0] === "--dump-regions") {
     dumpRegions(args[1]);
     return;
@@ -155,8 +181,8 @@ function main(): void {
   const correctionsPath = args[0];
   if (!correctionsPath) {
     console.error(
-      "usage: npx tsx tools/map-import.ts <corrections-file> [--apply]\n" +
-        "       npx tsx tools/map-import.ts --dump-regions [lo-hi]",
+      "usage: npx tsx tools/map-import.ts <corrections-file> [--apply] [--map <path>]\n" +
+        "       npx tsx tools/map-import.ts --dump-regions [lo-hi] [--map <path>]",
     );
     process.exit(2);
   }
@@ -365,8 +391,8 @@ function main(): void {
   }
 
   for (const c of changes) c.hex[c.field] = c.to;
-  writeFileSync(MAP_PATH, `${JSON.stringify(doc, null, 2)}\n`);
-  console.log(`\nwrote ${changes.length} change(s) to ${MAP_PATH}`);
+  writeFileSync(mapPath, `${JSON.stringify(doc, null, 2)}\n`);
+  console.log(`\nwrote ${changes.length} change(s) to ${mapPath}`);
 }
 
 main();

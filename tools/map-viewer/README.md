@@ -13,13 +13,22 @@ The map file is re-read on every request, so after applying corrections with
 `tools/map-import.ts` a browser refresh shows the new state. There is also a
 **Reload map.json** button in the panel.
 
-## It never writes to the map
+## Writing goes through map-import, always
 
-The viewer stages corrections and prints them in `map-import`'s text format for
-you to paste into a corrections file. It does not edit the JSON. `map-import`
-stays the single validated path for changing hex data, so its checks - hex
-exists, no double assignment, no uncovered rows, undeclared region id - cannot
-be bypassed by clicking.
+**Preview** and **Apply** hand the staged text to `tools/map-import.ts` on the
+server and show you its output verbatim. The viewer itself never touches the
+JSON, so every check `map-import` performs - hex exists, no double assignment,
+no uncovered rows, undeclared region id is a hard error - applies exactly as if
+you had written the corrections file by hand. A block that fails validation is
+refused and nothing is written.
+
+**Preview** is the dry run. **Apply** writes, then re-reads the map from disk so
+what you see is the file. **Copy** is still there if you would rather keep the
+corrections file yourself.
+
+Git is the undo. Apply writes straight to a tracked file, so check `git diff`
+before committing - and prefer applying a column at a time, which keeps the
+diff reviewable.
 
 ## Using it
 
@@ -29,7 +38,9 @@ be bypassed by clicking.
 | select a hex | click |
 | select a run | shift-click a second hex in the same column |
 | stage a change | choose terrain or region, press **Assign** |
-| get the text | **Copy**, then paste into a corrections file |
+| check it | **Preview** - a `map-import` dry run, output shown below |
+| write it | **Apply** - runs `map-import --apply`, then reloads from disk |
+| do it by hand instead | **Copy**, then paste into a corrections file |
 
 **Colour by terrain** uses mimetic colours - water blue, forest green - so the
 map reads as a map. **Colour by region** uses a palette chosen by maximising

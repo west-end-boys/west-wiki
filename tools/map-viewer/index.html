@@ -90,6 +90,18 @@
   }
   .stat { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-2); }
   .stat b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  #import-log {
+    margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px;
+    line-height: 1.4; white-space: pre-wrap; color: var(--ink-2);
+  }
+  #import-log:empty { display: none; }
+  #import-log.bad { color: var(--danger); }
+  #import-log.good { color: #1a7f37; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #import-log.good { color: #3fb950; }
+  }
 </style>
 </head>
 <body>
@@ -147,9 +159,14 @@
     <div class="stat"><span>staged</span><b id="stage-count">0</b></div>
     <textarea id="out" rows="7" readonly placeholder="staged corrections appear here in map-import format"></textarea>
     <div class="row" style="margin-top:6px">
+      <button id="preview">Preview</button>
+      <button id="apply" class="primary">Apply</button>
+    </div>
+    <div class="row" style="margin-top:6px">
       <button id="copy">Copy</button>
       <button id="reset">Discard staged</button>
     </div>
+    <pre id="import-log"></pre>
   </fieldset>
 
   <fieldset>
@@ -657,12 +674,51 @@ $("apply-paint").addEventListener("click", () => {
 });
 $("clear-sel").addEventListener("click", () => { selected.clear(); renderOut(); draw(); });
 $("reset").addEventListener("click", () => { staged.clear(); selected.clear(); renderOut(); draw(); });
+// Preview / Apply both hand the staged text to tools/map-import.ts on the
+// server. Nothing here writes to the map: map-import does every validation and
+// is the only writer, so clicking cannot bypass its checks.
+async function runImport(apply) {
+  const text = $("out").value.trim();
+  const log = $("import-log");
+  if (!text) { log.className = "bad"; log.textContent = "nothing staged"; return; }
+
+  for (const b of ["preview", "apply"]) $(b).disabled = true;
+  log.className = ""; log.textContent = apply ? "applying…" : "checking…";
+  try {
+    const res = await fetch(`/import?apply=${apply ? 1 : 0}`, { method: "POST", body: text });
+    const r = await res.json();
+    log.className = r.ok ? "good" : "bad";
+    log.textContent = [r.stdout, r.stderr].filter(Boolean).join("\n").trim()
+      || (r.ok ? "no output" : `map-import exited ${r.code}`);
+    if (r.applied) {
+      await load();                 // re-read from disk, so the view is the file
+      staged.clear(); selected.clear();
+      syncControls(); renderOut(); draw();
+      log.textContent += "\n\nmap reloaded from disk.";
+    }
+  } catch (e) {
+    log.className = "bad"; log.textContent = String(e);
+  } finally {
+    for (const b of ["preview", "apply"]) $(b).disabled = false;
+  }
+}
+$("preview").addEventListener("click", () => runImport(false));
+$("apply").addEventListener("click", () => runImport(true));
+
 $("copy").addEventListener("click", async () => {
   await navigator.clipboard.writeText($("out").value);
   const b = $("copy"); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1200);
 });
+// load() rebuilds the region dropdown, so put the live UI state back onto the
+// controls afterwards rather than letting them reset.
+function syncControls() {
+  if ([...$("focus").options].some((o) => o.value === ui.focus)) $("focus").value = ui.focus;
+  else { ui.focus = ""; $("focus").value = ""; }
+  buildKey();
+}
+
 $("reload").addEventListener("click", async () => {
-  await load(); staged.clear(); selected.clear(); renderOut(); draw();
+  await load(); staged.clear(); selected.clear(); syncControls(); renderOut(); draw();
 });
 addEventListener("resize", resize);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { buildKey(); draw(); });

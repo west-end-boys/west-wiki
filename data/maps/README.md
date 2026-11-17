@@ -172,9 +172,10 @@ record.
 
 `npm run map:view` serves a local browser view of the map for checking the
 transcription against the poster - terrain or region colouring, a hover readout
-giving each hex's ref, and hatching over everything still `UNKNOWN`. It is
-read-only: corrections are staged and emitted in the format below, to paste
-into a corrections file. See `tools/map-viewer/README.md`.
+giving each hex's ref, and hatching over everything still `UNKNOWN`. Hexes can
+be selected and corrected there; the viewer hands the result to
+`tools/map-import.ts` rather than writing the JSON itself, so the validations
+below apply unchanged. See `tools/map-viewer/README.md`.
 
 ## Editing
 

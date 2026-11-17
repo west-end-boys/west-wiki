@@ -14,7 +14,9 @@
  * changing hex data.
  */
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,12 +47,62 @@ const TYPES = {
 };
 
 const NO_STORE = { "cache-control": "no-store" };
+const MAX_BODY = 1_000_000;
+
+const readBody = (req) =>
+  new Promise((ok, fail) => {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+      if (body.length > MAX_BODY) {
+        fail(new Error("corrections body too large"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => ok(body));
+    req.on("error", fail);
+  });
+
+/**
+ * Run a corrections block through tools/map-import.ts. Writes nothing itself:
+ * map-import performs every validation and is the only thing that touches the
+ * map, so the viewer cannot bypass its checks. `apply` false is a dry run.
+ */
+function runImport(text, apply) {
+  return new Promise((done) => {
+    mkdtemp(join(tmpdir(), "map-viewer-")).then(async (dir) => {
+      const file = join(dir, "corrections.txt");
+      await writeFile(file, text, "utf8");
+      const args = ["tools/map-import.ts", file, ...(apply ? ["--apply"] : []), "--map", MAP_REL];
+      const child = spawn(resolve(ROOT, "node_modules/.bin/tsx"), args, { cwd: ROOT });
+      let out = "", err = "";
+      child.stdout.on("data", (c) => (out += c));
+      child.stderr.on("data", (c) => (err += c));
+      child.on("close", async (code) => {
+        await rm(dir, { recursive: true, force: true });
+        done({ ok: code === 0, code, applied: apply && code === 0, stdout: out, stderr: err });
+      });
+      child.on("error", async (e) => {
+        await rm(dir, { recursive: true, force: true });
+        done({ ok: false, code: -1, applied: false, stdout: "", stderr: String(e) });
+      });
+    });
+  });
+}
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname === "/" ? "/index.html" : url.pathname;
 
   try {
+    if (path === "/import" && req.method === "POST") {
+      const result = await runImport(await readBody(req), url.searchParams.get("apply") === "1");
+      if (result.applied) console.log(`applied corrections to ${MAP_REL}`);
+      res.writeHead(200, { ...NO_STORE, "content-type": TYPES[".json"] });
+      res.end(JSON.stringify(result));
+      return;
+    }
+
     if (path === "/map.json") {
       const body = await readFile(MAP_PATH);
       res.writeHead(200, { ...NO_STORE, "content-type": TYPES[".json"] });
