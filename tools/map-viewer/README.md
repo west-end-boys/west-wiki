@@ -43,7 +43,8 @@ diff reviewable.
 | do it by hand instead | **Copy**, then paste into a corrections file |
 
 **Colour by terrain** uses mimetic colours - water blue, forest green - so the
-map reads as a map. **Colour by region** uses a palette chosen by maximising
+map reads as a map; the vocabulary and its colours come from
+`data/maps/terrain-types.json`, not from this page. **Colour by region** uses a palette chosen by maximising
 separation across the region pairs that actually *border* each other, computed
 from the hex data rather than assumed. Region identity is additionally carried
 by boundary strokes, direct labels, the hover readout and the legend, so it
@@ -85,6 +86,27 @@ the islands named during transcription come out contiguous.
 
 `data/maps/README.md` is authoritative for the coordinate system; this module
 must agree with it.
+
+`terrain.js` and `palette.js` are the same shape: data plus a check that
+re-derives the problem from the map, covered by `terrain.test.js` and
+`palette.test.js` in the normal `npm test` run.
+
+## Terrain types
+
+**[`data/maps/terrain-types.json`](../../data/maps/terrain-types.json) is the source of truth**,
+and adding a type means adding an entry there plus a row in
+[`data/maps/README.md`](../../data/maps/README.md). The page fetches the registry through a
+`/terrain-types.json` route; `terrain.js` is only the lookup over it, so this viewer holds no list
+of its own. It used to, and that copy was the de facto vocabulary while the README's table drifted
+two types behind the data.
+
+`map-import` refuses a terrain the registry does not declare, so a typo and a genuinely new type
+no longer look alike. An undeclared value reaching the map anyway renders **loud violet** and is
+named under the key with its hex count - deliberately not UNKNOWN's magenta, because UNKNOWN is
+the transcription to-do list and "nobody declared this" is a different problem.
+
+Travel cost and difficulty are not in the registry: ADR 005 makes affordances app-owned campaign
+configuration, so travel rules key off these ids from the application side.
 
 ## Region colours
 
