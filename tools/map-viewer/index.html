@@ -93,11 +93,13 @@
   .stat { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-2); }
   .stat b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
-  #import-log {
+  #import-log, #palette-log {
     margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px;
     line-height: 1.4; white-space: pre-wrap; color: var(--ink-2);
   }
+  #palette-log:empty { display: none; }
+  #palette-log.bad { color: var(--danger); }
   #import-log:empty { display: none; }
   #import-log.bad { color: var(--danger); }
   #import-log.good { color: #1a7f37; }
@@ -174,6 +176,7 @@
   <fieldset>
     <legend>Key</legend>
     <div class="key" id="key"></div>
+    <pre id="palette-log"></pre>
   </fieldset>
 
   <fieldset>
@@ -196,6 +199,9 @@
 // Grid geometry — the stagger, adjacency and ref notation — lives in
 // geometry.js so it can be unit tested against data/maps/README.md.
 import { SQRT3, centre, corners, refOf, edgeNeighbours, inHex } from "./geometry.js";
+import {
+  REGION_STYLE, paletteProblems, regionColour as regionColourIn, regionTexture, shade,
+} from "./palette.js";
 
 // ---------------------------------------------------------------------------
 // Palettes
@@ -215,25 +221,15 @@ const TERRAIN = {
   "lava":       "#d6563a",
   "UNKNOWN":    "#ff35b0",
 };
-// Chosen by maximising separation across the region pairs that actually BORDER
-// each other (computed from the hex data), not across all pairs — on a map,
-// regions that never touch need no hue separation. Identity is additionally
-// carried by borders, direct labels and the hover readout, never hue alone.
-const REGION_LIGHT = {
-  "gloaming": "#eda100", "last-sea": "#008300", "andrik": "#2a78d6",
-  "tal-yool": "#1baf7a", "bastion": "#e34948", "montmar": "#6250d6",
-  "lowland":  "#e87ba4", "UNKNOWN": "#cfcdc6",
-};
-const REGION_DARK = {
-  "gloaming": "#c98500", "last-sea": "#008300", "andrik": "#3987e5",
-  "tal-yool": "#199e70", "bastion": "#e66767", "montmar": "#9085e9",
-  "lowland":  "#d55181", "UNKNOWN": "#403f3b",
-};
+// Region hues, textures and the separability gates live in ./palette.js, which
+// documents why texture has to be load-bearing on this map. Only the theme
+// lookup belongs here, since it is the one part that needs the DOM.
 const isDark = () =>
   document.documentElement.dataset.theme === "dark" ||
   (document.documentElement.dataset.theme !== "light" &&
    matchMedia("(prefers-color-scheme: dark)").matches);
-const regionColour = (id) => (isDark() ? REGION_DARK : REGION_LIGHT)[id] ?? "#999";
+
+const regionColour = (id) => regionColourIn(id, isDark() ? "dark" : "light");
 
 // ---------------------------------------------------------------------------
 // State
@@ -270,6 +266,7 @@ async function load() {
 
   buildPaintValues();
   buildKey();
+  checkPalette();
   stats();
   fit();
 }
@@ -287,15 +284,35 @@ function buildPaintValues() {
 function buildKey() {
   const k = $("key");
   k.innerHTML = "";
+  // The swatch must carry the texture too: seven hues are used by two regions
+  // each, so colour-only swatches would show seven identical-looking pairs.
   const entries = ui.mode === "terrain"
-    ? Object.entries(TERRAIN)
-    : [...MAP.regions.map((r) => [r.name, regionColour(r.id)]), ["(unassigned)", regionColour("UNKNOWN")]];
-  for (const [name, colour] of entries) {
+    ? Object.entries(TERRAIN).map(([name, colour]) => [name, colour, "solid"])
+    : [...MAP.regions.map((r) => [r.name, regionColour(r.id), regionTexture(r.id)]),
+       ["(unassigned)", regionColour("UNKNOWN"), "solid"]];
+  for (const [name, colour, texture] of entries) {
     const sw = document.createElement("div");
-    sw.className = "sw"; sw.style.background = colour;
+    sw.className = "sw";
+    sw.style.background = texture === "hatch"
+      ? `repeating-linear-gradient(45deg, ${shade(colour, 0.45)} 0 1.5px, ${colour} 1.5px 4px)`
+      : colour;
     const lb = document.createElement("span"); lb.textContent = name;
     k.append(sw, lb);
   }
+}
+
+/**
+ * Report anything the palette no longer resolves. The border graph grows with
+ * every column transcribed — four regions have no hexes yet — so the
+ * assignment is checked against the data on each load rather than trusted.
+ */
+function checkPalette() {
+  const log = $("palette-log");
+  const problems = paletteProblems(MAP);
+  log.className = problems.length ? "bad" : "";
+  log.textContent = problems.length
+    ? `palette needs revisiting:\n${problems.map((p) => `  ${p}`).join("\n")}`
+    : "";
 }
 
 function stats() {
@@ -374,6 +391,19 @@ function draw() {
     ctx.globalAlpha = dim ? 0.17 : 1;
     ctx.fillStyle = fillOf(h);
     ctx.fill();
+
+    // Region texture — the second identity channel. Drawn at the 135 degree
+    // mirror of the UNKNOWN flag below, so the two never read as each other.
+    if (ui.mode === "region" && s >= 4 && regionTexture(e.regionId) === "hatch") {
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = shade(regionColour(e.regionId), 0.45);
+      ctx.lineWidth = Math.max(1, s / 8);
+      const gap = Math.max(3, s / 2.2);
+      for (let d = -2 * s; d < 2 * s; d += gap) {
+        ctx.beginPath(); ctx.moveTo(cx + d, cy + s); ctx.lineTo(cx + d + 2 * s, cy - s); ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // UNKNOWN flag — the to-do list, so make it shout
     const unk = ui.mode === "terrain" ? e.terrain === "UNKNOWN" : e.regionId === "UNKNOWN";

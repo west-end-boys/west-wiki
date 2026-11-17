@@ -85,3 +85,35 @@ the islands named during transcription come out contiguous.
 
 `data/maps/README.md` is authoritative for the coordinate system; this module
 must agree with it.
+
+## Region colours
+
+`palette.js` holds the region appearances, and `palette.test.js` pins them.
+
+A region's appearance is a **hue plus a texture** — solid or hatched. There are
+only eight validated categorical hues and fifteen regions, so hue alone cannot
+give each region its own look; 8 x 2 = 16 combinations can.
+
+Texture is not decoration here, it is load-bearing, and that is forced by the
+map rather than chosen. `last-sea`, `montmar`, `lowland` and `rimespire` all
+border one another, so separating them by hue needs four hues that are mutually
+distinguishable — and the largest mutually distinguishable set the palette has
+is three. Some border was always going to come down to texture. The assignment
+picks *which*: 16 of the 18 current borders are carried by hue, and the two left
+to texture are the two shortest.
+
+**The assignment goes stale as you transcribe.** It was optimised against the
+border graph at one moment, but that graph grows every time a column is
+assigned, and four regions have no hexes at all yet — so two regions that share
+a hue today may come to touch tomorrow. Rather than let that degrade silently,
+`paletteProblems()` re-derives the graph from the data and names anything the
+palette no longer resolves. The viewer runs it on every load and prints the
+result under the key in red; `palette.test.js` runs it against the committed map
+so `npm test` fails rather than the map quietly becoming harder to read.
+
+If it does report a pair, recompute the assignment rather than hand-patching one
+entry — the constraint is global.
+
+A region that is declared in the map but missing from `palette.js` renders in a
+loud magenta, not a grey. Greying it is how eight newly declared regions once
+went unnoticed for a whole session.
