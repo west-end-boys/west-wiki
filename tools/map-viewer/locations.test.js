@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   LOCATION_KINDS,
   SETTLEMENT_SCALES,
+  VIEWER_ROLES,
   kindLabel,
   locationProblems,
   markOf,
+  rankOf,
 } from "./locations.js";
 
 const MAP = JSON.parse(
@@ -31,7 +33,7 @@ const settlement = (overrides = {}) => ({
   kind: "settlement",
   scale: "village",
   hex: { x: 4000, y: 29 },
-  hidden: false,
+  visibleTo: "ANONYMOUS",
   ...overrides,
 });
 
@@ -40,7 +42,7 @@ const poi = (overrides = {}) => ({
   name: "The Weeping Barrow",
   kind: "point-of-interest",
   hex: { x: 4200, y: 29 },
-  hidden: false,
+  visibleTo: "ANONYMOUS",
   ...overrides,
 });
 
@@ -63,6 +65,23 @@ describe("the location kind vocabulary", () => {
 
   it("should order settlement scales largest first", () => {
     expect(SETTLEMENT_SCALES).toEqual(["city-state", "city", "town", "village"]);
+  });
+
+  it("should order viewer tiers in ascending rank, as ADR 004 defines them", () => {
+    expect(VIEWER_ROLES).toEqual(["ANONYMOUS", "PLAYER", "GM", "ADMINISTRATOR"]);
+  });
+
+  it("should rank a tier by its position, so visibility is a floor and not a match", () => {
+    // ADR 004: authorization is a rank comparison against a required minimum
+    // tier, never an exact-match check. A GM-only place is visible to an
+    // ADMINISTRATOR for the same reason.
+    expect(rankOf("ANONYMOUS")).toBe(0);
+    expect(rankOf("ADMINISTRATOR")).toBeGreaterThan(rankOf("GM"));
+    expect(rankOf("GM")).toBeGreaterThan(rankOf("PLAYER"));
+  });
+
+  it("should rank an undeclared tier above every real one, so it is never shown by accident", () => {
+    expect(rankOf("MODERATOR")).toBeGreaterThan(rankOf("ADMINISTRATOR"));
   });
 
   it("should label an unknown kind with the raw value rather than inventing one", () => {
@@ -164,12 +183,33 @@ describe("locationProblems", () => {
     expect(problems[0]).toContain("type");
   });
 
-  it("should report a non-boolean hidden flag", () => {
-    // `visibility: "?"` was a placeholder carrying no information. A staging
-    // stand-in for ADR 004 effect visibility has to at least be answerable.
-    const problems = locationProblems(mapWith(settlement({ hidden: "?" })));
+  it("should accept every declared viewer tier", () => {
+    for (const role of VIEWER_ROLES) {
+      expect(locationProblems(mapWith(settlement({ visibleTo: role }))), role).toEqual([]);
+    }
+  });
+
+  it("should report an undeclared viewer tier", () => {
+    const problems = locationProblems(mapWith(settlement({ visibleTo: "MODERATOR" })));
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toMatch(/hidden/);
+    expect(problems[0]).toContain("MODERATOR");
+  });
+
+  it("should report a missing viewer tier rather than assuming public", () => {
+    // Defaulting would publish a GM-only place by omission, which is the one
+    // direction this field must never fail in.
+    const noTier = settlement();
+    delete noTier.visibleTo;
+    const problems = locationProblems(mapWith(noTier));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/visibleTo/);
+  });
+
+  it("should report the retired hidden flag and say where it went", () => {
+    const problems = locationProblems(mapWith(settlement({ hidden: true })));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("hidden");
+    expect(problems[0]).toContain("visibleTo");
   });
 
   it("should report every problem, not just the first", () => {

@@ -18,6 +18,13 @@
  * optional field - a flat `{ type, scale? }` would permit a dungeon with a
  * population. `locationProblems` enforces that here, since JSON cannot.
  *
+ * `visibleTo` is a **floor**, and it is campaign-wide. It cannot express that
+ * one party has found a ruin and another has not - both are PLAYER - which is
+ * the West Marches case and the KB's job per
+ * doc/adr/004-fact-model-veracity-and-visibility.md. The two compose rather than
+ * compete: this floor decides who may *ever* see the place, and per-viewer
+ * resolution decides who sees it *yet*.
+ *
  * Plain JS with no DOM dependency so the browser viewer and the tests can both
  * load it, matching ./geometry.js, ./palette.js and ./terrain.js.
  */
@@ -39,6 +46,28 @@ export const LOCATION_KINDS = [
 export const SETTLEMENT_SCALES = ["city-state", "city", "town", "village"];
 
 /**
+ * Viewer tiers in ascending rank - `ViewerRole` in packages/app-be/src/index.ts,
+ * and the hierarchy doc/app-be/adr/004-role-based-permission-tiers.md defines.
+ *
+ * A location's `visibleTo` is the **minimum** tier that may see it, never an
+ * exact match: `visibleTo: "GM"` is seen by GMs and administrators and by nobody
+ * below, and `"ANONYMOUS"` is public. ADR 004 is explicit that authorization is
+ * a rank comparison against a required minimum, which is why this is an ordered
+ * list rather than a set.
+ */
+export const VIEWER_ROLES = ["ANONYMOUS", "PLAYER", "GM", "ADMINISTRATOR"];
+
+/**
+ * A tier's rank. An undeclared tier ranks above every real one, so a typo
+ * conceals a place rather than publishing it - the one direction this must
+ * never fail in.
+ */
+export function rankOf(role) {
+  const i = VIEWER_ROLES.indexOf(role);
+  return i === -1 ? VIEWER_ROLES.length : i;
+}
+
+/**
  * Mark for a kind with no entry above.
  *
  * Deliberately distinct from every declared mark, for the same reason terrain's
@@ -50,7 +79,7 @@ export const MISSING_MARK = "cross";
 /** Fields this shape does not use, mapped to what replaced them. */
 const RETIRED_FIELDS = {
   type: "`kind` for the arm, `scale` for a settlement's size - `type` did both jobs",
-  visibility: "`hidden`, a boolean - `visibility: \"?\"` carried no information",
+  hidden: "`visibleTo`, a viewer tier - a boolean collapsed ADR 004's four tiers into two",
 };
 
 const byKind = new Map(LOCATION_KINDS.map((k) => [k.id, k]));
@@ -72,7 +101,8 @@ export function markOf(kind) {
 export function describe(location) {
   const parts = [kindLabel(location.kind).toLowerCase()];
   if (location.scale) parts.push(location.scale);
-  if (location.hidden) parts.push("hidden");
+  // Only worth saying when it is not public - every other place would carry it.
+  if (rankOf(location.visibleTo) > 0) parts.push(`${location.visibleTo}+ only`);
   return `${location.name} (${parts.join(", ")})`;
 }
 
@@ -131,10 +161,12 @@ export function locationProblems(map) {
       );
     }
 
-    if (typeof l.hidden !== "boolean") {
+    if (!VIEWER_ROLES.includes(l.visibleTo)) {
+      const had = l.visibleTo === undefined ? "no visibleTo" : `visibleTo "${l.visibleTo}"`;
       problems.push(
-        `${where} has hidden "${l.hidden}", not true or false - it stands in for ADR 004 ` +
-          `effect visibility and has to be answerable`,
+        `${where} has ${had}; it must be one of ${VIEWER_ROLES.join(", ")} - the lowest tier ` +
+          `that may see it. There is no default, because defaulting would publish a GM-only ` +
+          `place by omission`,
       );
     }
 

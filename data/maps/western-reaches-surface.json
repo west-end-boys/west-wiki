@@ -28594,7 +28594,7 @@
         "x": 4000,
         "y": 29
       },
-      "hidden": false,
+      "visibleTo": "ANONYMOUS",
       "isSafe": true,
       "allowsCharacterActivation": true
     },
@@ -28606,7 +28606,7 @@
         "x": 4200,
         "y": 29
       },
-      "hidden": false
+      "visibleTo": "ANONYMOUS"
     }
   ]
 }
