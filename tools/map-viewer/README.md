@@ -87,9 +87,10 @@ the islands named during transcription come out contiguous.
 `data/maps/README.md` is authoritative for the coordinate system; this module
 must agree with it.
 
-`terrain.js` and `palette.js` are the same shape: data plus a check that
-re-derives the problem from the map, covered by `terrain.test.js` and
-`palette.test.js` in the normal `npm test` run.
+`terrain.js`, `palette.js` and `locations.js` are the same shape: data plus a
+check that re-derives the problem from the map, covered by `terrain.test.js`,
+`palette.test.js` and `locations.test.js` in the normal `npm test` run. The page
+runs all three on load and prints anything they report under the key, in red.
 
 ## Terrain types
 
@@ -107,6 +108,32 @@ the transcription to-do list and "nobody declared this" is a different problem.
 
 Travel cost and difficulty are not in the registry: ADR 005 makes affordances app-owned campaign
 configuration, so travel rules key off these ids from the application side.
+
+## Locations
+
+Every place lives in **one `locations` array**, discriminated by `kind` — the
+shape [ADR 005](../../doc/adr/005-map-data-ownership-and-location-taxonomy.md)
+specifies. `locations.js` holds the vocabulary and the mark per kind;
+[`data/maps/README.md`](../../data/maps/README.md) is the reference for the
+format itself.
+
+| kind | Mark |
+|---|---|
+| `settlement` | filled circle |
+| `point-of-interest` | filled diamond |
+| undeclared kind | a bare ✕, which is meant to read as a defect |
+
+Shape, not colour, so the two survive a greyscale print and a CVD reader; both
+are directly labelled with the place name once zoomed in far enough, and the
+hover readout names the kind and scale. A `hidden` location — GM-only, standing
+in for ADR 004 effect visibility — is drawn with a **dashed** outline, so it
+cannot be transcribed as a public one by mistake.
+
+The arrays were briefly split, `settlements` and `locations`, and this page read
+`locations` only: the map's one settlement stopped drawing and `npm test` stayed
+green throughout. `locationProblems()` names a leftover second array explicitly
+for that reason, alongside an undeclared kind, a settlement with no scale, and a
+point-of-interest carrying one.
 
 ## Region colours
 

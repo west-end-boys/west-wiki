@@ -194,16 +194,63 @@ river is an edge while a major river is a hex.
 
 ## Locations
 
-Villages, keyed locations, and other points of interest belong in `locations`,
-not in `terrain`. The array is currently empty.
+Settlements, dungeons and other places belong in `locations`, not in `terrain`.
+**One array, discriminated by `kind`** - adding a kind means adding an entry to
+`LOCATION_KINDS` in [`tools/map-viewer/locations.js`](../../tools/map-viewer/locations.js)
+plus a row in the table below, and `locations.test.js` fails if the two
+disagree.
 
-Note before populating it: `Location` is **KB-owned** per
-[ADR 002](../../doc/adr/002-application-owned-identity-and-scheduling-state.md),
-and its shape is defined in
-[`doc/contract/KB-PROJECTIONS.md`](../../doc/contract/KB-PROJECTIONS.md). How
-this transcription feeds the knowledge base is an open design question, so the
-array's eventual contents may be a staging format rather than the canonical
-record.
+| kind | What it is | Scale |
+|---|---|---|
+| `settlement` | Somewhere a character can perform downtime, shop, and travel to or from - a safe harbour of some scale | required |
+| `point-of-interest` | Somewhere to explore, investigate, or raise a call to adventure about | never |
+
+The split is **by affordance, not appearance**, which is what makes it decide
+the awkward cases. A hostile orc town looks like a settlement and is a point of
+interest, because it offers neither downtime nor shopping. A point of interest
+with nothing in it yet is a legitimate state - arguably the most interesting
+one in a West Marches campaign, since it may become something.
+
+Scale (`city-state`, `city`, `town`, `village`, largest first) applies only to
+settlements, so it lives in that arm rather than as an optional field: a flat
+shape would permit a dungeon with a population. The check in `locations.js`
+enforces this, since JSON cannot.
+
+```json
+{
+  "id": "marins-hold",
+  "name": "Marin's Hold",
+  "kind": "settlement",
+  "scale": "village",
+  "hex": { "x": 4000, "y": 29 },
+  "hidden": false,
+  "isSafe": true,
+  "allowsCharacterActivation": true
+}
+```
+
+`hidden` is a **staging stand-in** for the effect visibility of
+[ADR 004](../../doc/adr/004-fact-model-veracity-and-visibility.md), which
+resolves KB-side per viewer. A boolean in a file cannot do that, so it will not
+survive into the contract - it is here so a GM-only place is not transcribed as
+a public one. `isSafe` and `allowsCharacterActivation` are app-owned
+affordances, which is why they sit on the settlement arm only.
+
+### Where this is going
+
+[ADR 005](../../doc/adr/005-map-data-ownership-and-location-taxonomy.md) splits
+the map three ways: the baseline board is app-owned (provisionally), while **a
+location's existence, position and what is known about it are KB-owned**, and
+the affordances above are app-owned campaign configuration. So **this array is a
+staging format, not a canonical record** - it is where the transcription lives
+while it is being verified against the poster.
+
+The kinds here are ADR 005's two arms, and the ADR writes them as a
+discriminated union destined for `packages/contract`. It is still `Proposed` and
+awaiting review (#41), so `packages/app-be`'s `LocationType` enum and
+[`doc/contract/KB-PROJECTIONS.md`](../../doc/contract/KB-PROJECTIONS.md) still
+carry the two older vocabularies it supersedes. Do not treat either as
+authoritative for this file.
 
 ---
 
