@@ -28588,14 +28588,25 @@
     {
       "id": "marins-hold",
       "name": "Marin's Hold",
-      "isSafe": true,
-      "allowsCharacterActivation": true,
-      "visibility": "?",
+      "kind": "settlement",
+      "scale": "village",
       "hex": {
         "x": 4000,
         "y": 29
       },
-      "type": "village"
+      "hidden": false,
+      "isSafe": true,
+      "allowsCharacterActivation": true
+    },
+    {
+      "id": "myre-castle-ruins",
+      "name": "Myre Castle Ruins",
+      "kind": "point-of-interest",
+      "hex": {
+        "x": 4200,
+        "y": 29
+      },
+      "hidden": false
     }
   ]
 }
