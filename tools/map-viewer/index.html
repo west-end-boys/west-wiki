@@ -62,6 +62,8 @@
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button:disabled:hover { border-color: var(--border); }
   .row { display: flex; gap: 6px; align-items: center; }
   .row > * { flex: 1; }
 
@@ -559,31 +561,40 @@ function renderOut() {
     }
   }
 
-  // Region mode needs a COMPLETE column — map-import rejects a column with an
-  // uncovered row — so emit the whole column as runs, staged edits folded in.
+  // Emit ONLY the rows being changed, never the whole column. An uncovered row
+  // is a warning in map-import, but an undeclared region id is a hard error —
+  // and restating a column mid-pass would emit its existing UNKNOWN runs,
+  // which is exactly that error. Partial columns apply cleanly.
   if (cols.size) {
     if (out.length) out.push("");
     out.push("[regions]");
     for (const c of [...cols].sort((a, b) => a - b)) {
-      const rows = MAP.hexes.filter((h) => h.x / 100 === c).map((h) => h.y).sort((a, b) => a - b);
+      const rows = [...staged]
+        .filter(([k, st]) => st.field === "regionId" && Number(k.split("/")[0]) === c)
+        .map(([k, st]) => [Number(k.split("/")[1]), st.value])
+        .sort((a, b) => a[0] - b[0]);
       const runs = [];
-      for (const r of rows) {
-        const st = staged.get(kOf(c, r));
-        const v = st?.field === "regionId" ? st.value : byKey.get(kOf(c, r)).regionId;
+      for (const [r, v] of rows) {
         const last = runs[runs.length - 1];
         if (last && last.v === v && last.hi === r - 1) last.hi = r;
         else runs.push({ v, lo: r, hi: r });
       }
-      const body = runs.map((x) => `${x.v} ${x.lo === x.hi ? x.lo : `${x.lo}-${x.hi}`}`).join(", ");
-      out.push(`${c}: ${body}`);
-      if (runs.some((x) => x.v === "UNKNOWN"))
-        out.push(`#   ^ column ${c} still has UNKNOWN runs — map-import will reject an undeclared id`);
+      out.push(`${c}: ${runs.map((x) => `${x.v} ${x.lo === x.hi ? x.lo : `${x.lo}-${x.hi}`}`).join(", ")}`);
     }
   }
 
   $("out").value = out.join("\n");
   $("stage-count").textContent = staged.size;
   $("sel-count").textContent = selected.size;
+  syncRunButtons();
+}
+
+/** Grey Preview/Apply when there is nothing to send, so a dead click reads as
+ *  "nothing staged" at a glance rather than looking like a broken button. */
+function syncRunButtons() {
+  const none = staged.size === 0;
+  $("preview").disabled = none;
+  $("apply").disabled = none;
 }
 
 // ---------------------------------------------------------------------------
@@ -680,16 +691,19 @@ $("reset").addEventListener("click", () => { staged.clear(); selected.clear(); r
 async function runImport(apply) {
   const text = $("out").value.trim();
   const log = $("import-log");
-  if (!text) { log.className = "bad"; log.textContent = "nothing staged"; return; }
+  const show = (cls, msg) => {
+    log.className = cls; log.textContent = msg;
+    log.scrollIntoView({ block: "nearest" });   // the panel scrolls; don't
+  };                                            // let a refusal land offscreen
+  if (!text) { show("bad", "nothing staged — select hexes and press Assign first"); return; }
 
   for (const b of ["preview", "apply"]) $(b).disabled = true;
-  log.className = ""; log.textContent = apply ? "applying…" : "checking…";
+  show("", apply ? "applying…" : "checking…");
   try {
     const res = await fetch(`/import?apply=${apply ? 1 : 0}`, { method: "POST", body: text });
     const r = await res.json();
-    log.className = r.ok ? "good" : "bad";
-    log.textContent = [r.stdout, r.stderr].filter(Boolean).join("\n").trim()
-      || (r.ok ? "no output" : `map-import exited ${r.code}`);
+    show(r.ok ? "good" : "bad", [r.stdout, r.stderr].filter(Boolean).join("\n").trim()
+      || (r.ok ? "no output" : `map-import exited ${r.code}`));
     if (r.applied) {
       await load();                 // re-read from disk, so the view is the file
       staged.clear(); selected.clear();
@@ -697,9 +711,9 @@ async function runImport(apply) {
       log.textContent += "\n\nmap reloaded from disk.";
     }
   } catch (e) {
-    log.className = "bad"; log.textContent = String(e);
+    show("bad", String(e));
   } finally {
-    for (const b of ["preview", "apply"]) $(b).disabled = false;
+    syncRunButtons();
   }
 }
 $("preview").addEventListener("click", () => runImport(false));

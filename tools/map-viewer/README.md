@@ -64,13 +64,16 @@ http://localhost:7380/?mode=region&focus=gloaming&col=33&refs=1
 `mode` is `terrain` or `region`; `focus` is a region id; `col` is 0-63; `refs=1`
 turns on hex reference labels (they appear once zoomed in far enough).
 
-## Region corrections are emitted as whole columns
+## Only the hexes you changed are emitted
 
-`map-import` rejects a column with an uncovered row, so staging a region change
-emits that column's **complete** run-length line - existing assignments folded
-together with the staged edits - rather than just the hexes clicked. If the
-column still contains unassigned hexes the output carries a `#` comment saying
-so, because `UNKNOWN` is not a declared region id and the import would fail.
+A region correction covers the rows you actually assigned, as runs, and nothing
+else. A column left partly unassigned is fine: `map-import` treats an uncovered
+row as a warning, not an error, and reports the rows still lacking a region so
+a gap cannot pass silently.
+
+Restating the whole column would be worse than unnecessary - it would emit the
+column's existing `UNKNOWN` runs, and `UNKNOWN` is not a declared region id,
+which *is* a hard error. Every column mid-pass would be unapplicable.
 
 ## Geometry
 

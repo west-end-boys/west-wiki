@@ -48,8 +48,10 @@
  *     region ids are checked against regions[] and an undeclared id is a
  *     hard error, since it would break referential integrity
  *   - refs that already hold the requested value are reported as no-ops
- *   - regions mode reports any rows in a named column left uncovered, so a
- *     gap in the middle of a column cannot pass silently
+ *   - regions mode reports rows in a named column that still have no region
+ *     after the change, so a gap in the middle of a column cannot pass
+ *     silently. A correction may cover only part of a column - that is normal
+ *     mid-pass - so rows already assigned are not reported
  *   - terrain mode reports contiguous clusters among the changed hexes, so an
  *     island that comes out in two pieces is visible rather than silent
  */
@@ -82,6 +84,12 @@ interface Change {
 }
 
 const DEFAULT_MAP_PATH = "data/maps/western-reaches-surface.json";
+
+/** Placeholder regionId/terrain for a hex not yet transcribed. */
+const UNASSIGNED = "UNKNOWN";
+
+/** Cap on row numbers listed in a warning, so one column cannot bury the rest. */
+const MAX_ROWS_LISTED = 12;
 
 /** Overridden by --map, so the surface map is not the only one importable. */
 let mapPath = DEFAULT_MAP_PATH;
@@ -320,11 +328,23 @@ function main(): void {
         assign(col, row, "regionId", region, lineNo, `${col}/y${row}`);
       }
     }
-    const uncovered = [...existingRows].filter((r) => !covered.has(r)).sort((a, b) => a - b);
-    if (uncovered.length > 0) {
+    // Rows this line does not cover AND that still have no region afterwards.
+    //
+    // Reporting every uncovered row buries real warnings: a correction may
+    // legitimately touch part of a column, which is the normal case during an
+    // in-progress pass and when tools/map-viewer emits only the hexes changed.
+    // A row left UNKNOWN is the signal worth acting on, and a row skipped by
+    // mistake in a full-column line still surfaces here because it stays
+    // UNKNOWN.
+    const stillUnknown = [...existingRows]
+      .filter((r) => !covered.has(r) && byKey.get(`${col},${r}`)?.regionId === UNASSIGNED)
+      .sort((a, b) => a - b);
+    if (stillUnknown.length > 0) {
+      const shown = stillUnknown.slice(0, MAX_ROWS_LISTED).join(", ");
+      const rest = stillUnknown.length - MAX_ROWS_LISTED;
       warnings.push(
-        `line ${lineNo}: column ${col} leaves ${uncovered.length} row(s) ` +
-          `unassigned: ${uncovered.join(", ")}`,
+        `line ${lineNo}: column ${col} still has ${stillUnknown.length} row(s) ` +
+          `with no region: ${shown}${rest > 0 ? `, and ${rest} more` : ""}`,
       );
     }
   }
