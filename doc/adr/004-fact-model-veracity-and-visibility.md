@@ -1,4 +1,4 @@
-# ADR 003: Fact Model, Veracity, and Hybrid Visibility
+# ADR 004: Fact Model, Veracity, and Hybrid Visibility
 
 **Scope:** System-wide (KB record structure; contract surface; moderation model)
 **Status:** Accepted
@@ -167,6 +167,42 @@ holding every extraction for review -- was judged the more expensive error.
    does retraction cascade, invalidate, or merely recompute?
 4. **Veracity beyond two values.** `RUMOR` and `CANON` may prove too coarse -- a GM-corroborated
    player report is neither. Deferred until the report workflow shows whether it matters.
+
+---
+
+## Amendments
+
+**2026-11-17. Hidden entries.** The hybrid rule above is narrowed, not reversed: an entry may also
+be hidden from a viewer entirely -- its effect and its existence, not only its detail and
+provenance. The motivating case is a GM recording that a character is cursed where the curse is
+meant to stay secret from the player. The player's projection and the player's view of history
+show no trace of it.
+
+An entry's effect and its detail are therefore resolved against two separate visibility levels:
+
+- **effect visibility** -- who may see that the entry exists and what it changed;
+- **detail visibility** -- who may additionally see its narrative detail and provenance. It is never
+  wider than effect visibility.
+
+That yields the three states the projection contract already names: fully visible; effect visible
+with detail and provenance redacted (the feathers example above); and hidden (the secret curse).
+
+The fact type still sets the limits. A fact type that contributes to a value which must reconcile
+across viewers -- gold -- pins its effect visibility to every viewer who can see the subject, so it
+cannot carry a hidden entry. Its detail remains independently redactable.
+
+Consequences:
+
+- "A viewer who may not see an entry's detail still sees that the entry exists" holds only for a
+  viewer inside the entry's effect visibility.
+- The consequence accepted above -- that the shape of history is never concealed -- no longer holds
+  universally. For a viewer an entry is hidden from, the history is a correct projection of what
+  that viewer may see, not a complete one.
+- ADR 001's requirement that history be visible "subject to content-level redaction, not
+  structural suppression" is narrowed to match; see its 2026-11-17 amendment.
+- Which fact types may carry hidden entries is a per-type registry decision, and is open where a
+  hidden entry changes something the viewer can otherwise observe. See `doc/kb/REQUIREMENTS.md`
+  Open Questions.
 
 ---
 

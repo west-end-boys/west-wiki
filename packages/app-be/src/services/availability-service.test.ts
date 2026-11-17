@@ -7,7 +7,7 @@ import type {
   LocationSummary,
 } from "../index.js";
 import { InMemoryKnowledgeBaseGateway } from "../kb/in-memory-knowledge-base-gateway.js";
-import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import type { ActorContext } from "../kb/knowledge-base-gateway.js";
 import { InMemoryCharacterCommitmentStore } from "../store/in-memory-character-commitment-store.js";
 import { AvailabilityService } from "./availability-service.js";
 import { CommitmentService } from "./commitment-service.js";
@@ -27,7 +27,7 @@ const marinsHold: LocationSummary = {
   allowsCharacterActivation: true,
 };
 
-const context: ViewerContext = {
+const context: ActorContext = {
   userId: "player-1",
   viewerRole: "PLAYER",
 };

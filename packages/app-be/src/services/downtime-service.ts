@@ -6,7 +6,7 @@ import type {
 import { DomainError } from "../domain/domain-error.js";
 import type {
   KnowledgeBaseGateway,
-  ViewerContext,
+  ActorContext,
 } from "../kb/knowledge-base-gateway.js";
 import { CommitmentService } from "./commitment-service.js";
 
@@ -28,7 +28,7 @@ export class DowntimeService {
   async scheduleDowntime(
     characterId: CharacterId,
     request: ScheduleDowntimeRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CharacterCommitment> {
     const character = await this.kb.getCharacter(characterId, context);
     if (!character) {
@@ -75,7 +75,7 @@ export class DowntimeService {
   async cancelScheduledDowntime(
     characterId: CharacterId,
     commitmentId: string,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CharacterCommitment> {
     const character = await this.kb.getCharacter(characterId, context);
     if (!character) {
@@ -106,7 +106,7 @@ export class DowntimeService {
 
   private async validateTravelRequest(
     request: ScheduleDowntimeRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<void> {
     if (request.type !== "TRAVEL") return;
 

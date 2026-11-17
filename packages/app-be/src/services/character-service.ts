@@ -9,7 +9,7 @@ import type {
 import { DomainError } from "../domain/domain-error.js";
 import type {
   KnowledgeBaseGateway,
-  ViewerContext,
+  ActorContext,
 } from "../kb/knowledge-base-gateway.js";
 import type { CampaignStore } from "../store/campaign-store.js";
 
@@ -25,7 +25,7 @@ export class CharacterService {
   async activateCharacter(
     characterId: CharacterId,
     request: ActivateCharacterRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CharacterCommandResult> {
     const [character, ownedCharacters, startingLocations] = await Promise.all(
       [
@@ -107,7 +107,7 @@ export class CharacterService {
 
   async createDraftCharacter(
     request: CreateCharacterRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CharacterCommandResult> {
     const name = request.name?.trim();
     if (!name) {
@@ -130,7 +130,7 @@ export class CharacterService {
   async retireCharacter(
     characterId: CharacterId,
     request: RetireCharacterRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CharacterCommandResult> {
     const [character, knownLocations] = await Promise.all([
       this.kb.getCharacter(characterId, context),

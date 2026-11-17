@@ -1,4 +1,4 @@
-# ADR 002: KB/App Ownership Boundary and Trust Model
+# ADR 003: KB/App Ownership Boundary and Trust Model
 
 **Scope:** System-wide (entity ownership; deployment shape; trust boundary)
 **Status:** Accepted
@@ -86,8 +86,8 @@ The KB and `app-be` are the same system, written and deployed by the same people
 independent authority boundary between them. The KB trusts the actor context `app-be` supplies --
 authenticated identity and role tier -- rather than independently re-establishing it. `app-be` is
 responsible for authentication, session management, and role resolution (see
-[ADR 004](../app-be/adr/004-role-based-permission-tiers.md) and
-[ADR 005](../app-be/adr/005-email-and-password-authentication.md)).
+[ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md) and
+[ADR 005 (app)](../app-be/adr/005-email-and-password-authentication.md)).
 
 What the KB still enforces at write time is *domain* authority, not identity: whether the asserted
 role tier is sufficient for the fact type, and whether a GM is authorized for the region the fact

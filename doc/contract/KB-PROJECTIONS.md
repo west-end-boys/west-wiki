@@ -1,7 +1,7 @@
 # KB Projection Contract
 
 Status: Draft  
-Last updated: September 15, 2026
+Last updated: November 17, 2026
 
 ## Purpose
 
@@ -24,7 +24,7 @@ The KB is an event-sourced fact store. Nothing described here is a mutable recor
 | ExpeditionReport | KB | Original human submission, retained unchanged |
 | ProposedChange | KB | Under review -- may be removed entirely; see Open Items |
 | User | app | Identity and authentication |
-| CampaignMembership | app | Role assignment; see [ADR 004](../app-be/adr/004-role-based-permission-tiers.md) |
+| CampaignMembership | app | Role assignment; see [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md) |
 | Campaign | app | Configuration and campaign rules, not world state |
 | CharacterCommitment | app | Scheduling state; blocking periods |
 | AdventureOpportunity | app | Adventure board entry |
@@ -46,7 +46,7 @@ Both directions are permitted. The application guarantees that identifiers it is
 
 These apply to every shape below.
 
-**Viewer role is a parameter of every read.** Roles are the tiers defined in [ADR 004](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. The KB accepts the actor context `app-be` supplies rather than re-establishing identity; both layers are inside one trust boundary.
+**Viewer role is a parameter of every read.** Roles are the tiers defined in [ADR 004 (app)](../app-be/adr/004-role-based-permission-tiers.md): `ANONYMOUS` < `PLAYER` < `GM` < `ADMINISTRATOR`, each including everything below it. The KB accepts the actor context `app-be` supplies rather than re-establishing identity; both layers are inside one trust boundary.
 
 **Every projected value carries provenance.** A projected attribute is not a bare value. It is a value plus the entry that produced it:
 
@@ -59,7 +59,7 @@ These apply to every shape below.
 
 Provenance is required by [ADR 001](../adr/001-event-sourced-fact-store.md) and `doc/kb/REQUIREMENTS.md`. The attribute lists below name the *values* a projection carries; each arrives wrapped in this envelope. The executable types under `packages/` define the envelope once rather than repeating it per field.
 
-**Redacted detail is present, not absent.** Under the hybrid visibility rule ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)), a viewer who may not see an entry's detail still sees that the entry exists and what it did. A projection therefore distinguishes three states for a value: fully visible, visible-with-redacted-provenance, and not visible. The middle state is a shape the contract must express, not an omission.
+**Visibility has three states.** Under [ADR 004](../adr/004-fact-model-veracity-and-visibility.md) as amended, each entry has an effect visibility and a detail visibility. A projection therefore distinguishes three states for an entry: fully visible; effect visible with detail and provenance redacted; and hidden. The middle state is a shape the contract must express, not an omission. A hidden entry is omitted entirely -- the viewer receives no trace of it, in current state or in history.
 
 ## Projections
 
@@ -96,7 +96,7 @@ Roster-counting states are `ACTIVE` and `MISSING`; `countsAgainstRosterLimit` is
 
 A player has direct authority over characters they own: facts a player asserts about their own character enter the record without moderation ([ADR 004](../adr/004-fact-model-veracity-and-visibility.md)).
 
-Because the KB entity persists beyond play, a retired character does not need to be copied into a separate world-facing Person or NPC record. The KB entity was always the person; the application's playable-character concern simply ends. See [ADR 002](../app-be/adr/002-character-lifecycle-and-retirement.md).
+Because the KB entity persists beyond play, a retired character does not need to be copied into a separate world-facing Person or NPC record. The KB entity was always the person; the application's playable-character concern simply ends. See [ADR 002 (app)](../app-be/adr/002-character-lifecycle-and-retirement.md).
 
 ### Region
 

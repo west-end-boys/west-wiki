@@ -104,27 +104,14 @@ are invisible to `task.next()` and `task.status()`.
 
 ## Architectural Decisions
 
-ADRs live in `doc/adr/` (system-wide), `doc/kb/adr/` (KB-internal), or `doc/app-be/adr/`
-(app-internal). See `doc/REPO-STRUCTURE.md §ADR scopes` for which scope a decision belongs in.
+ADRs live in one directory per scope, numbered per directory:
 
-Current ADRs:
+- `doc/adr/` -- system-wide and contract decisions
+- `doc/kb/adr/` -- KB-internal decisions
+- `doc/app-be/adr/` -- application-internal decisions
 
-System-wide (`doc/adr/`):
-- `001-event-sourced-fact-store.md` — KB stores facts as an append-only event log; the wiki is a
-  projection. Editing = appending a correcting fact, not mutating a record.
-- `002-application-owned-identity-and-scheduling-state.md` — why identity and scheduling state sit
-  on the app side: event-sourcing earns its keep only where retraction and provenance matter.
-- `003-kb-app-ownership-boundary.md` — which layer owns which entity; the KB is a service; both
-  layers share one trust boundary; the app is not event-sourced.
-- `004-fact-model-veracity-and-visibility.md` — three entry kinds, the fact-type registry as a
-  deployment artifact, `RUMOR`/`CANON` veracity, and hybrid visibility.
-
-Application (`doc/app-be/adr/`):
-- `001-campaign-state-changes-through-actions.md`
-- `002-character-lifecycle-and-retirement.md`
-- `003-downtime-commitments-and-availability.md`
-- `004-role-based-permission-tiers.md`
-- `005-email-and-password-authentication.md`
+List the directory for the current set rather than relying on a list here. `doc/REPO-STRUCTURE.md`
+§ADR scopes says which scope a decision belongs in and how to reference an ADR from another scope.
 
 ---
 
@@ -162,8 +149,7 @@ See `doc/adr/003-kb-app-ownership-boundary.md`.
 
 ## Prior-Art References
 
-Collected in the project Google Doc. Not yet formally evaluated (tracked as a `status:deferred`
-issue). Do not assume any of these projects are suitable or unsuitable without investigation.
-
-The comparison axes have not been written down yet. The scan should evaluate against them rather
-than sorting projects by impression.
+Candidates are collected in the project Google Doc. The comparison axes, and evaluations made
+against them so far, are in `doc/kb/PRIOR-ART.md` (tracked as a `status:deferred` issue). Evaluate
+new candidates against those axes rather than sorting projects by impression, and do not assume a
+project is suitable or unsuitable without investigation.

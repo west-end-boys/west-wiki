@@ -9,7 +9,7 @@ import { DomainError } from "../domain/domain-error.js";
 import { hasAtLeast } from "../domain/role.js";
 import type { EmailGateway } from "../email/email-gateway.js";
 import type { SessionStore } from "../http/session-store.js";
-import type { ViewerContext } from "../kb/knowledge-base-gateway.js";
+import type { ActorContext } from "../kb/knowledge-base-gateway.js";
 import type { CampaignStore } from "../store/campaign-store.js";
 
 export class AuthService {
@@ -22,7 +22,7 @@ export class AuthService {
   /** GM/Admin-assisted account creation - ADR 005's MVP interim path. */
   async createAccount(
     request: CreateAccountRequest,
-    context: ViewerContext,
+    context: ActorContext,
   ): Promise<CreateAccountResult> {
     const campaign = await this.campaignStore.getCampaign();
     if (!campaign) {

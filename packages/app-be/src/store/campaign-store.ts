@@ -34,7 +34,7 @@ export interface CreateMembershipInput {
  *
  * getCampaign() is zero-argument: this app has always assumed a single
  * campaign per deployment (doc/contract/API.md's GET /campaign is
- * singular; doc/app/REQUIREMENTS.md rules out public multi-tenant
+ * singular; doc/app-be/REQUIREMENTS.md rules out public multi-tenant
  * hosting for the initial release).
  */
 export interface CampaignStore {

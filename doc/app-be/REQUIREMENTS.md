@@ -1,7 +1,7 @@
 # Application Requirements
 
 Status: Draft  
-Last updated: September 15, 2026
+Last updated: November 17, 2026
 
 ## Purpose
 
@@ -28,7 +28,7 @@ Not priorities for the first release, rather than permanent exclusions. Where a 
 - **Universal support for every RPG system.** Shadowdark is first; the generic action, time, and commitment model is built so others can follow.
 - **Public multi-tenant hosting.** This shapes the campaign-creation bootstrap rule in [ADR 004](adr/004-role-based-permission-tiers.md).
 - **Character-specific knowledge modeling** -- what a given character knows, as distinct from what a player may see.
-- **Fully automated acceptance of LLM-generated changes.** The LLM is never an authorized author and this is not expected to change.
+- **LLM-asserted canon.** The LLM is never an authorized author and cannot assert `CANON`; this is not expected to change. Its extractions are recorded as unverified `RUMOR` under the submitting human's authorship, without an approval gate -- see Report and Canon Requirements.
 - **Universal world-building ontology.** A longer-term ambition of the KB layer, not an initial deliverable.
 - **Local or offline LLM support.**
 - **Self-service signup and password reset.** Accounts are GM- or Administrator-created for the initial build; see [ADR 005](adr/005-email-and-password-authentication.md).
@@ -65,11 +65,11 @@ The LLM may interpret requests and suggest structured operations, but it cannot 
 
 ### GMs control canon; players contribute rumors
 
-A player has direct authority over their own characters and may assert facts about them without moderation. Claims a player makes about the *world* are recorded immediately but carry a `RUMOR` veracity qualifier -- attributed, preserved, and not authoritative. A GM makes something canon by asserting it. See [ADR 004](../adr/004-fact-model-veracity-and-visibility.md).
+A player has direct authority over their own characters and may assert facts about them without moderation. Claims a player makes about the *world* are recorded immediately but carry a `RUMOR` veracity qualifier -- attributed, preserved, and not authoritative. A GM makes something canon by asserting it. See [ADR 004 (system)](../adr/004-fact-model-veracity-and-visibility.md).
 
 ### Accepted changes retain provenance
 
-Important campaign information remains linked to its source, author, expedition, approving GM, and revision history.
+Important campaign information remains linked to its source, author, expedition, revision history, and -- for canon -- the GM who asserted it.
 
 ## Actors
 
@@ -99,8 +99,8 @@ Can:
 - create and manage adventure opportunities;
 - publish availability;
 - run adventures in authorized regions;
-- review and approve proposed campaign changes;
-- manage canonical world state;
+- curate player and LLM-extracted claims: promote a rumor to canon, contradict it, or retract it;
+- manage canonical world state, including GM-only and hidden entries;
 - correct or override authoritative character state when necessary.
 
 ### Administrator
@@ -216,7 +216,7 @@ Initial campaign-knowledge visibility levels are:
 
 The application must never rely on client-side filtering to protect GM-only content.
 
-Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 003](../adr/003-kb-app-ownership-boundary.md).
+Two mechanisms enforce this, and they are not interchangeable. World knowledge from the KB arrives already redacted -- the KB resolves visibility per viewer and the application never receives content it must hide. Application-owned records such as adventure opportunities and GM availability windows are filtered by the application itself, as an authorization check on the query against the caller's role tier. See [ADR 003 (system)](../adr/003-kb-app-ownership-boundary.md).
 
 ## Natural-Language Interaction Requirements
 
@@ -243,7 +243,7 @@ Important changes should retain enough information to determine:
 - previous value where relevant;
 - source of the change;
 - whether an LLM was involved;
-- who approved a canonical change.
+- which GM asserted a canonical change.
 
 ## Open Product Questions
 

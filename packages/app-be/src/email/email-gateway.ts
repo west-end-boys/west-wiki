@@ -6,8 +6,8 @@ export interface EmailMessage {
 
 /**
  * Application-owned email delivery seam. Needed by account
- * verification/recovery (doc/app/adr/005-email-and-password-authentication.md)
- * and by notifications (doc/app/REQUIREMENTS.md Notification Requirements).
+ * verification/recovery (doc/app-be/adr/005-email-and-password-authentication.md)
+ * and by notifications (doc/app-be/REQUIREMENTS.md Notification Requirements).
  * Real provider selection is deferred - ADR 005's own open question.
  */
 export interface EmailGateway {
