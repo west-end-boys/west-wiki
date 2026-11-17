@@ -206,6 +206,10 @@ import {
 // source of truth and is fetched at load. terrain.js is only the lookup over it,
 // so this page cannot hold a second, drifting copy of the list.
 import { makeTerrain, terrainProblems } from "./terrain.js";
+// Locations are one array discriminated by `kind` (ADR 005). locations.js holds
+// the vocabulary, the mark per kind, and the check - so a second array cannot
+// appear and quietly take half the places out of this page again.
+import { describe as describeLocation, locationProblems, markOf } from "./locations.js";
 
 // ---------------------------------------------------------------------------
 // Palettes
@@ -261,7 +265,7 @@ async function load() {
 
   buildPaintValues();
   buildKey();
-  checkPalettes();
+  checkData();
   stats();
   fit();
 }
@@ -299,15 +303,18 @@ function buildKey() {
 }
 
 /**
- * Report anything either palette no longer resolves, checked against the data
- * on each load rather than trusted. Two independent drifts are possible: the
- * region border graph changes as regions are redrawn, and a terrain value can
- * reach the map without being declared in terrain-types.json.
+ * Report anything this page can no longer resolve, checked against the data on
+ * each load rather than trusted. Three independent drifts are possible: the
+ * region border graph changes as regions are redrawn, a terrain value can reach
+ * the map without being declared in terrain-types.json, and a location can
+ * arrive in a shape nothing declares - a kind with no mark, or a second array
+ * this loop would never read.
  */
-function checkPalettes() {
+function checkData() {
   const log = $("palette-log");
   const problems = [
     ...terrainProblems(TERRAIN_REGISTRY, MAP),
+    ...locationProblems(MAP),
     ...paletteProblems(MAP),
   ];
   log.className = problems.length ? "bad" : "";
@@ -359,6 +366,25 @@ function fillOf(h) {
   const e = effective(h);
   if (ui.mode === "terrain") return terrain.colour(e.terrain);
   return regionColour(e.regionId);
+}
+
+/**
+ * Trace a location's mark, centred, as a path the caller fills and strokes.
+ * One branch per `mark` in locations.js LOCATION_KINDS; `cross` is the
+ * undeclared-kind fallback and is meant to look like a defect.
+ */
+function locationMark(ctx, mark, cx, cy, r) {
+  if (mark === "diamond") {
+    ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
+    ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath();
+    return;
+  }
+  if (mark === "cross") {
+    ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
+    ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+    return;
+  }
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
 }
 
 function draw() {
@@ -474,9 +500,14 @@ function draw() {
     for (const l of MAP.locations) {
       const [cx, cy] = centre(l.hex.x / 100, l.hex.y, s);
       const rr = Math.max(3, s / 2.1);
-      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+      ctx.beginPath();
+      locationMark(ctx, markOf(l.kind), cx, cy, rr);
       ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111"; ctx.stroke();
+      ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111";
+      // A hidden place is GM-only, so it must not transcribe as a public one.
+      // Dashes carry that, not colour - the mark is already doing the kind.
+      if (l.hidden) ctx.setLineDash([Math.max(2, rr / 1.6), Math.max(2, rr / 1.6)]);
+      ctx.stroke(); ctx.setLineDash([]);
       if (s >= 7) {
         ctx.font = `600 ${Math.max(10, s * 0.95)}px ui-sans-serif, system-ui, sans-serif`;
         ctx.textAlign = "center"; ctx.textBaseline = "bottom";
@@ -657,7 +688,7 @@ addEventListener("mousemove", (e) => {
     `ref  <b>${refOf(col, h.y)}</b>   col ${col}  row ${h.y}\n` +
     `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${terrain.label(e2.terrain)}</b>\n` +
     `region   <b class="${e2.regionId === "UNKNOWN" ? "warn" : ""}">${regionName.get(e2.regionId) ?? e2.regionId}</b>` +
-    (loc ? `\nlocation <b>${loc.name}</b> (${loc.type})` : "");
+    (loc ? `\nlocation <b>${describeLocation(loc)}</b>` : "");
 });
 addEventListener("mouseup", (e) => {
   canvas.classList.remove("dragging");
