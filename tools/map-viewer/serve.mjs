@@ -110,6 +110,16 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // The terrain vocabulary. Served by an explicit route for the same reason
+    // the map is: it lives in data/, outside the directory this serves, and is
+    // re-read per request so an edit shows on refresh.
+    if (path === "/terrain-types.json") {
+      const body = await readFile(resolve(ROOT, "data", "maps", "terrain-types.json"));
+      res.writeHead(200, { ...NO_STORE, "content-type": TYPES[".json"] });
+      res.end(body);
+      return;
+    }
+
     // Only ever serve files from this directory.
     const target = resolve(HERE, `.${path}`);
     if (!target.startsWith(HERE)) {

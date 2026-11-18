@@ -93,11 +93,13 @@
   .stat { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-2); }
   .stat b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
-  #import-log {
+  #import-log, #palette-log {
     margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px;
     line-height: 1.4; white-space: pre-wrap; color: var(--ink-2);
   }
+  #palette-log:empty { display: none; }
+  #palette-log.bad { color: var(--danger); }
   #import-log:empty { display: none; }
   #import-log.bad { color: var(--danger); }
   #import-log.good { color: #1a7f37; }
@@ -174,6 +176,7 @@
   <fieldset>
     <legend>Key</legend>
     <div class="key" id="key"></div>
+    <pre id="palette-log"></pre>
   </fieldset>
 
   <fieldset>
@@ -196,49 +199,36 @@
 // Grid geometry — the stagger, adjacency and ref notation — lives in
 // geometry.js so it can be unit tested against data/maps/README.md.
 import { SQRT3, centre, corners, refOf, edgeNeighbours, inHex } from "./geometry.js";
+import {
+  REGION_STYLE, paletteProblems, regionColour as regionColourIn, regionTexture, shade,
+} from "./palette.js";
+// The terrain vocabulary is data, not code: data/maps/terrain-types.json is the
+// source of truth and is fetched at load. terrain.js is only the lookup over it,
+// so this page cannot hold a second, drifting copy of the list.
+import { makeTerrain, terrainProblems } from "./terrain.js";
+// Locations are one array discriminated by `kind` (ADR 005). locations.js holds
+// the vocabulary, the mark per kind, and the check - so a second array cannot
+// appear and quietly take half the places out of this page again.
+import { describe as describeLocation, locationProblems, markOf, rankOf } from "./locations.js";
 
 // ---------------------------------------------------------------------------
 // Palettes
 // ---------------------------------------------------------------------------
-const TERRAIN = {
-  "ocean":      "#2f6fa8",
-  "arctic sea": "#b3cfe0",
-  "lake":       "#58a8d8",
-  "river":      "#3590c4",
-  "grassland":  "#9cc06b",
-  "forest":     "#3f7d42",
-  "jungle":     "#1d6b47",
-  "swamp":      "#6d7f4a",
-  "desert":     "#e0c781",
-  "mountain":   "#8f8679",
-  "volcano":    "#6d392d",
-  "lava":       "#d6563a",
-  "UNKNOWN":    "#ff35b0",
-};
-// Chosen by maximising separation across the region pairs that actually BORDER
-// each other (computed from the hex data), not across all pairs — on a map,
-// regions that never touch need no hue separation. Identity is additionally
-// carried by borders, direct labels and the hover readout, never hue alone.
-const REGION_LIGHT = {
-  "gloaming": "#eda100", "last-sea": "#008300", "andrik": "#2a78d6",
-  "tal-yool": "#1baf7a", "bastion": "#e34948", "montmar": "#6250d6",
-  "lowland":  "#e87ba4", "UNKNOWN": "#cfcdc6",
-};
-const REGION_DARK = {
-  "gloaming": "#c98500", "last-sea": "#008300", "andrik": "#3987e5",
-  "tal-yool": "#199e70", "bastion": "#e66767", "montmar": "#9085e9",
-  "lowland":  "#d55181", "UNKNOWN": "#403f3b",
-};
+// Region hues, textures and the separability gates live in ./palette.js, which
+// documents why texture has to be load-bearing on this map. Only the theme
+// lookup belongs here, since it is the one part that needs the DOM.
 const isDark = () =>
   document.documentElement.dataset.theme === "dark" ||
   (document.documentElement.dataset.theme !== "light" &&
    matchMedia("(prefers-color-scheme: dark)").matches);
-const regionColour = (id) => (isDark() ? REGION_DARK : REGION_LIGHT)[id] ?? "#999";
+
+const regionColour = (id) => regionColourIn(id, isDark() ? "dark" : "light");
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 let MAP = null, byKey = new Map(), regionName = new Map();
+let TERRAIN_REGISTRY = null, terrain = null;
 const view = { s: 9, ox: 0, oy: 0 };
 const ui = {
   mode: "terrain", focus: "", col: null,
@@ -256,6 +246,11 @@ const kOf = (c, r) => `${c}/${r}`;
 // Load
 // ---------------------------------------------------------------------------
 async function load() {
+  const reg = await fetch("/terrain-types.json", { cache: "no-store" });
+  if (!reg.ok) throw new Error(`terrain-types.json: ${reg.status}`);
+  TERRAIN_REGISTRY = await reg.json();
+  terrain = makeTerrain(TERRAIN_REGISTRY);
+
   const res = await fetch("./map.json", { cache: "no-store" });
   if (!res.ok) throw new Error(`map.json: ${res.status}`);
   MAP = await res.json();
@@ -270,6 +265,7 @@ async function load() {
 
   buildPaintValues();
   buildKey();
+  checkData();
   stats();
   fit();
 }
@@ -278,24 +274,53 @@ function buildPaintValues() {
   const sel = $("paint-value");
   const field = $("paint-field").value;
   sel.innerHTML = "";
+  // The option's VALUE is always the stored id; only its text is the label, so
+  // a corrections block still emits exactly what goes on the hex.
   const vals = field === "terrain"
-    ? Object.keys(TERRAIN).filter((t) => t !== "UNKNOWN").concat("UNKNOWN")
-    : MAP.regions.map((r) => r.id);
-  for (const v of vals) sel.add(new Option(v, v));
+    ? terrain.entries.map((t) => [t.label, t.id])
+    : MAP.regions.map((r) => [r.id, r.id]);
+  for (const [text, value] of vals) sel.add(new Option(text, value));
 }
 
 function buildKey() {
   const k = $("key");
   k.innerHTML = "";
+  // The swatch must carry the texture too: seven hues are used by two regions
+  // each, so colour-only swatches would show seven identical-looking pairs.
   const entries = ui.mode === "terrain"
-    ? Object.entries(TERRAIN)
-    : [...MAP.regions.map((r) => [r.name, regionColour(r.id)]), ["(unassigned)", regionColour("UNKNOWN")]];
-  for (const [name, colour] of entries) {
+    ? terrain.entries.map((t) => [t.label, t.colour, "solid"])
+    : [...MAP.regions.map((r) => [r.name, regionColour(r.id), regionTexture(r.id)]),
+       ["(unassigned)", regionColour("UNKNOWN"), "solid"]];
+  for (const [name, colour, texture] of entries) {
     const sw = document.createElement("div");
-    sw.className = "sw"; sw.style.background = colour;
+    sw.className = "sw";
+    sw.style.background = texture === "hatch"
+      ? `repeating-linear-gradient(45deg, ${shade(colour, 0.45)} 0 1.5px, ${colour} 1.5px 4px)`
+      : colour;
     const lb = document.createElement("span"); lb.textContent = name;
     k.append(sw, lb);
   }
+}
+
+/**
+ * Report anything this page can no longer resolve, checked against the data on
+ * each load rather than trusted. Three independent drifts are possible: the
+ * region border graph changes as regions are redrawn, a terrain value can reach
+ * the map without being declared in terrain-types.json, and a location can
+ * arrive in a shape nothing declares - a kind with no mark, or a second array
+ * this loop would never read.
+ */
+function checkData() {
+  const log = $("palette-log");
+  const problems = [
+    ...terrainProblems(TERRAIN_REGISTRY, MAP),
+    ...locationProblems(MAP),
+    ...paletteProblems(MAP),
+  ];
+  log.className = problems.length ? "bad" : "";
+  log.textContent = problems.length
+    ? `needs revisiting:\n${problems.map((p) => `  ${p}`).join("\n")}`
+    : "";
 }
 
 function stats() {
@@ -339,8 +364,27 @@ function effective(h) {
 
 function fillOf(h) {
   const e = effective(h);
-  if (ui.mode === "terrain") return TERRAIN[e.terrain] ?? "#777";
+  if (ui.mode === "terrain") return terrain.colour(e.terrain);
   return regionColour(e.regionId);
+}
+
+/**
+ * Trace a location's mark, centred, as a path the caller fills and strokes.
+ * One branch per `mark` in locations.js LOCATION_KINDS; `cross` is the
+ * undeclared-kind fallback and is meant to look like a defect.
+ */
+function locationMark(ctx, mark, cx, cy, r) {
+  if (mark === "diamond") {
+    ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
+    ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath();
+    return;
+  }
+  if (mark === "cross") {
+    ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
+    ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+    return;
+  }
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
 }
 
 function draw() {
@@ -374,6 +418,19 @@ function draw() {
     ctx.globalAlpha = dim ? 0.17 : 1;
     ctx.fillStyle = fillOf(h);
     ctx.fill();
+
+    // Region texture — the second identity channel. Drawn at the 135 degree
+    // mirror of the UNKNOWN flag below, so the two never read as each other.
+    if (ui.mode === "region" && s >= 4 && regionTexture(e.regionId) === "hatch") {
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = shade(regionColour(e.regionId), 0.45);
+      ctx.lineWidth = Math.max(1, s / 8);
+      const gap = Math.max(3, s / 2.2);
+      for (let d = -2 * s; d < 2 * s; d += gap) {
+        ctx.beginPath(); ctx.moveTo(cx + d, cy + s); ctx.lineTo(cx + d + 2 * s, cy - s); ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // UNKNOWN flag — the to-do list, so make it shout
     const unk = ui.mode === "terrain" ? e.terrain === "UNKNOWN" : e.regionId === "UNKNOWN";
@@ -443,16 +500,27 @@ function draw() {
     for (const l of MAP.locations) {
       const [cx, cy] = centre(l.hex.x / 100, l.hex.y, s);
       const rr = Math.max(3, s / 2.1);
-      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+      ctx.beginPath();
+      locationMark(ctx, markOf(l.kind), cx, cy, rr);
       ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111"; ctx.stroke();
+      ctx.lineWidth = Math.max(1.4, s / 5); ctx.strokeStyle = "#111";
+      // The outline says restricted or not, and nothing finer. Dash length was
+      // tried as an ordinal ramp over the four tiers and rejected on looking at
+      // it: at working zoom a mark is ~6px across, and three dash densities over
+      // that span are not rankable by eye. Which tier is carried by the label
+      // instead, where it is unambiguous.
+      if (rankOf(l.visibleTo) > 0) ctx.setLineDash([Math.max(2, rr / 1.5), Math.max(2, rr / 1.5)]);
+      ctx.stroke(); ctx.setLineDash([]);
       if (s >= 7) {
+        // Public is the common case and goes unsaid; anything narrower is named
+        // outright, because that is the fact worth checking against the poster.
+        const label = rankOf(l.visibleTo) > 0 ? `${l.name} · ${l.visibleTo}` : l.name;
         ctx.font = `600 ${Math.max(10, s * 0.95)}px ui-sans-serif, system-ui, sans-serif`;
         ctx.textAlign = "center"; ctx.textBaseline = "bottom";
         ctx.lineWidth = 3; ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface");
-        ctx.strokeText(l.name, cx, cy - rr - 2);
+        ctx.strokeText(label, cx, cy - rr - 2);
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink");
-        ctx.fillText(l.name, cx, cy - rr - 2);
+        ctx.fillText(label, cx, cy - rr - 2);
       }
     }
   }
@@ -624,9 +692,9 @@ addEventListener("mousemove", (e) => {
   const loc = MAP.locations.find((l) => l.hex.x === h.x && l.hex.y === h.y);
   el.innerHTML =
     `ref  <b>${refOf(col, h.y)}</b>   col ${col}  row ${h.y}\n` +
-    `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${e2.terrain}</b>\n` +
+    `terrain  <b class="${e2.terrain === "UNKNOWN" ? "warn" : ""}">${terrain.label(e2.terrain)}</b>\n` +
     `region   <b class="${e2.regionId === "UNKNOWN" ? "warn" : ""}">${regionName.get(e2.regionId) ?? e2.regionId}</b>` +
-    (loc ? `\nlocation <b>${loc.name}</b> (${loc.type})` : "");
+    (loc ? `\nlocation <b>${describeLocation(loc)}</b>` : "");
 });
 addEventListener("mouseup", (e) => {
   canvas.classList.remove("dragging");

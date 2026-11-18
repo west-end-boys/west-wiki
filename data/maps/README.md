@@ -73,21 +73,57 @@ transcription error. Treat a checkerboard run as a question, never as a bug.
 
 ## Terrain
 
-One value per hex, from this vocabulary:
+One value per hex. **[`terrain-types.json`](terrain-types.json) is the source of truth for the
+vocabulary** - this table is prose about it, and `tools/map-viewer/terrain.test.js` asserts the two
+agree, so neither can drift from the other the way they did before it existed.
 
-| terrain | notes |
-|---|---|
-| `ocean` | open sea south of the arctic line; also inland water, pending a `lake` type |
-| `arctic sea` | frozen sea. The arctic line is `y <= 20`; everything south is `ocean` |
-| `grassland` | |
-| `forest` | |
-| `jungle` | |
-| `swamp` | |
-| `desert` | |
-| `mountain` | |
-| `volcano` | some volcanoes will be ringed by `lava` once that type is added |
-| `river` | a **major** waterway filling the whole hex - impassable without aid |
-| `UNKNOWN` | terrain not yet transcribed, or hidden beneath a map symbol |
+**To add a terrain type:** add an entry to `terrain-types.json`, then add its row here. That is the
+whole procedure. `tools/map-import.ts` refuses a terrain value the registry does not declare, so a
+new type and a typo can no longer look alike.
+
+| terrain | surface | notes |
+|---|---|---|
+| `ocean` | water | open sea south of the arctic line. Also still carries inland water not yet retyped - see below |
+| `arctic sea` | water | frozen sea. The arctic line is `y <= 20`; everything south is `ocean` |
+| `lake` | water | inland water, with no connection to the open sea |
+| `river` | water | a **major** waterway filling the whole hex - impassable without aid |
+| `grassland` | land | |
+| `forest` | land | |
+| `jungle` | land | |
+| `swamp` | land | |
+| `desert` | land | |
+| `salt flat` | land | |
+| `canyon` | land | |
+| `mountain` | land | |
+| `volcano` | land | ringed by `lava` in places |
+| `lava` | land | |
+| `UNKNOWN` | unknown | terrain not yet transcribed, or hidden beneath a map symbol |
+
+`surface` is the intrinsic land/water classification, which the arctic-sea rule and the
+lake-vs-ocean distinction below both depend on. It is a property of the landform.
+
+**Travel cost and terrain difficulty are deliberately not in the registry.**
+[ADR 005](../../doc/adr/005-map-data-ownership-and-location-taxonomy.md) classifies what the rules
+let a character do somewhere as app-owned campaign configuration rather than world data, so travel
+rules key off these ids from the application side. A difficulty column here would put a rules
+number in a world-data record.
+
+### Colours are mimetic, and new ones are measured
+
+Terrain colours imitate the thing - water blue, forest green - so the map reads as a map rather
+than as a categorical chart. Three blues for water and three greens for vegetation are therefore
+deliberate, and the categorical separation gates do not apply to the scheme as a whole.
+
+What does apply is that a **new** type must not be confusable with one already on the map, so new
+colours are measured rather than eyeballed. The existing palette's closest pair is `forest`/`swamp`
+at ΔE 5.8 normal-vision and 2.0 under simulated CVD, and 11 of its 78 pairs fall below the
+categorical floor of 15 - that is the bar a new colour has to clear, not the gates themselves.
+
+- `salt flat` `#f7f3e8` - nearest neighbour `arctic sea`, ΔE 13.5 normal / 11.8 CVD. The two are
+  also latitude-disjoint: arctic sea is `y <= 20` and salt flats are desert.
+- `canyon` `#c98f6b` - nearest `mountain` at ΔE 10.0 normal, `grassland` at 6.2 CVD. Sandstone
+  rather than the obvious terracotta: every red-brown candidate collided with `lava` under CVD, at
+  worst ΔE 0.2, which a protanope would see as the same colour.
 
 ### `UNKNOWN` carries two distinct meanings
 
@@ -99,14 +135,17 @@ Both are legitimate and neither should be guessed at:
   not recoverable from the art, so `UNKNOWN` records "land, type unknown"
   rather than inventing a plausible value
 
-### Inland water has no distinct type yet
+### Inland water is mid-retype
 
-Lakes and inland seas are currently typed `ocean`. A flood fill from the map
-border separates them from open sea - a substantial number of hexes across many
-bodies, from single hexes up to inland seas of thirty or more. Introducing a
-`lake` type would make that distinction explicit; until then, "is this hex
-connected to the open sea" is a topological question, not one the terrain value
-answers.
+`lake` exists and 43 hexes carry it, but the retyping is **not finished**. A flood fill over
+`ocean` and `arctic sea` hexes, seeded from the map border, currently leaves **75 sea-typed hexes
+in 21 disconnected bodies** - sizes 26, 14, 7, 6, 6 and sixteen single hexes, the largest around
+col 44 / row 65.
+
+Those are candidates, not confirmed lakes. A body can be cut off from the fill and still be
+genuine sea: one hex of `river` across a strait disconnects everything behind it. So "is this hex
+connected to the open sea" remains a topological question that wants a look at the poster, not a
+retype that can be inferred from the data alone.
 
 The arctic rule interacts with this: it applies to **open sea only**. A
 mountain lake at `y = 8` is a lake, not arctic sea, so latitude alone must not
@@ -155,16 +194,91 @@ river is an edge while a major river is a hex.
 
 ## Locations
 
-Villages, keyed locations, and other points of interest belong in `locations`,
-not in `terrain`. The array is currently empty.
+Settlements, dungeons and other places belong in `locations`, not in `terrain`.
+**One array, discriminated by `kind`** - adding a kind means adding an entry to
+`LOCATION_KINDS` in [`tools/map-viewer/locations.js`](../../tools/map-viewer/locations.js)
+plus a row in the table below, and `locations.test.js` fails if the two
+disagree.
 
-Note before populating it: `Location` is **KB-owned** per
-[ADR 002](../../doc/adr/002-application-owned-identity-and-scheduling-state.md),
-and its shape is defined in
-[`doc/contract/KB-PROJECTIONS.md`](../../doc/contract/KB-PROJECTIONS.md). How
-this transcription feeds the knowledge base is an open design question, so the
-array's eventual contents may be a staging format rather than the canonical
-record.
+| kind | What it is | Scale |
+|---|---|---|
+| `settlement` | Somewhere a character can perform downtime, shop, and travel to or from - a safe harbour of some scale | required |
+| `point-of-interest` | Somewhere to explore, investigate, or raise a call to adventure about | never |
+
+The split is **by affordance, not appearance**, which is what makes it decide
+the awkward cases. A hostile orc town looks like a settlement and is a point of
+interest, because it offers neither downtime nor shopping. A point of interest
+with nothing in it yet is a legitimate state - arguably the most interesting
+one in a West Marches campaign, since it may become something.
+
+Scale (`city-state`, `city`, `town`, `village`, largest first) applies only to
+settlements, so it lives in that arm rather than as an optional field: a flat
+shape would permit a dungeon with a population. The check in `locations.js`
+enforces this, since JSON cannot.
+
+```json
+{
+  "id": "marins-hold",
+  "name": "Marin's Hold",
+  "kind": "settlement",
+  "scale": "village",
+  "hex": { "x": 4000, "y": 29 },
+  "visibleTo": "ANONYMOUS",
+  "isSafe": true,
+  "allowsCharacterActivation": true
+}
+```
+
+`isSafe` and `allowsCharacterActivation` are app-owned affordances, which is why
+they sit on the settlement arm only.
+
+### Who can see it
+
+`visibleTo` names the **lowest viewer tier** that may see the place on the map.
+The tiers are the ordered hierarchy of
+[app-be ADR 004](../../doc/app-be/adr/004-role-based-permission-tiers.md),
+spelled as `ViewerRole` in `packages/app-be/src/index.ts`:
+
+| visibleTo | Who sees it |
+|---|---|
+| `ANONYMOUS` | everyone, including visitors who are not in the campaign |
+| `PLAYER` | campaign members and above |
+| `GM` | GMs and administrators |
+| `ADMINISTRATOR` | administrators only |
+
+It is a **floor, not a match** - a GM-only place is visible to an administrator
+for the same reason a GM can do everything a player can. ADR 004 is explicit
+that authorization is a rank comparison against a required minimum tier.
+
+**There is no default.** A location with no `visibleTo` is an error rather than
+a public one, because defaulting would publish a GM-only place by omission, and
+that is the one direction this field must never fail in. For the same reason an
+unrecognised tier ranks *above* administrator rather than below anonymous: a
+typo conceals, it does not reveal.
+
+**This is not the whole of visibility, and it cannot be.** A rank is
+campaign-wide, so it cannot say that one party has found a ruin and another has
+not - both are `PLAYER`. That is per-viewer world knowledge, which
+[ADR 004](../../doc/adr/004-fact-model-veracity-and-visibility.md) resolves
+KB-side, and it is the characteristic West Marches case. The two compose rather
+than compete: `visibleTo` decides who may **ever** see a place, and the KB
+decides who sees it **yet**.
+
+### Where this is going
+
+[ADR 005](../../doc/adr/005-map-data-ownership-and-location-taxonomy.md) splits
+the map three ways: the baseline board is app-owned (provisionally), while **a
+location's existence, position and what is known about it are KB-owned**, and
+the affordances above are app-owned campaign configuration. So **this array is a
+staging format, not a canonical record** - it is where the transcription lives
+while it is being verified against the poster.
+
+The kinds here are ADR 005's two arms, and the ADR writes them as a
+discriminated union destined for `packages/contract`. It is still `Proposed` and
+awaiting review (#41), so `packages/app-be`'s `LocationType` enum and
+[`doc/contract/KB-PROJECTIONS.md`](../../doc/contract/KB-PROJECTIONS.md) still
+carry the two older vocabularies it supersedes. Do not treat either as
+authoritative for this file.
 
 ---
 
